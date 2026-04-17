@@ -24,9 +24,54 @@ logger = logging.getLogger(__name__)
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-20250514"
 
-NOT_FOUND_AR = "عذراً، لا تتوفر لدي معلومات كافية في الوثائق المتاحة للإجابة على هذا السؤال."
-NOT_FOUND_EN = "Sorry, I could not find relevant information in the available documents."
+NOT_FOUND_AR = "عذراً، لم أجد معلومات كافية للإجابة على سؤالك في الوثائق المتاحة."
+NOT_FOUND_EN = "Sorry, I could not find sufficient information to answer your question in the available documents."
 VIOLATION_AR = "عذراً، لا يمكنني الرد على هذا النوع من الرسائل. يرجى استخدام لغة لائقة."
+
+# ── Arabic/Western numeral helpers (mirrored from archive_logic) ──────────────
+_AR2W = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+
+def normalize_numbers(text: str) -> str:
+    """Convert Arabic-Indic numerals to Western numerals."""
+    if not text:
+        return text
+    return str(text).translate(_AR2W)
+
+def extract_decree_from_question(question: str) -> dict:
+    """Extract decree number and year from a user question."""
+    normalized = normalize_numbers(question)
+    patterns = [
+        r'رقم\s*[\(\s]*(\d+)',
+        r'القرار\s+(\d+)',
+        r'تعميم\s+(\d+)',
+        r'وزاري\s+(\d+)',
+        r'number\s+(\d+)',
+        r'no\.?\s*(\d+)',
+        r'#\s*(\d+)',
+    ]
+    decree_num = None
+    for pattern in patterns:
+        m = re.search(pattern, normalized, re.IGNORECASE)
+        if m:
+            decree_num = m.group(1)
+            break
+    year_m = re.search(r'(20\d{2})', normalized)
+    year = year_m.group(1) if year_m else None
+    return {"decree_number": decree_num, "year": year}
+
+def load_stored_text_chatbot(file_id: str, base_dir: Optional[Path] = None) -> str:
+    """Load persisted extracted text for a file (written during indexing)."""
+    candidates = []
+    if base_dir:
+        candidates.append(base_dir / "data" / "texts" / f"{file_id}.txt")
+    candidates += [Path("data/texts") / f"{file_id}.txt", Path("./data/texts") / f"{file_id}.txt"]
+    for p in candidates:
+        if p.exists():
+            try:
+                return p.read_text(encoding="utf-8")
+            except Exception:
+                pass
+    return ""
 
 GREETING_KEYWORDS = [
     "السلام", "سلام", "مرحبا", "مرحباً", "هلا", "صباح", "مساء",
@@ -434,13 +479,12 @@ class ChatbotService:
     @staticmethod
     def _normalize_arabic_numbers(text: str) -> str:
         """Convert Arabic-Indic numerals (٠-٩) to Western numerals (0-9)."""
-        ar_map = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
-        return text.translate(ar_map)
+        return normalize_numbers(text)
 
     @staticmethod
     def _build_query_variations(question: str) -> List[str]:
         """Generate query variations to maximise ChromaDB recall."""
-        q = ChatbotService._normalize_arabic_numbers(question)
+        q = normalize_numbers(question)
         variations = [q]
 
         # Decree number normalisation: "قرار وزاري رقم 9 لسنة 2026" variations
@@ -467,12 +511,24 @@ class ChatbotService:
 
     def _metadata_keyword_search(self, question: str) -> Tuple[List[str], List[Dict]]:
         """
-        Fallback: search files_metadata.json for decree_number / year matches.
-        Returns ChromaDB docs+metas for matched file IDs.
+        Fallback: parse decree/year from the question, search files_metadata.json,
+        then load the stored text from disk (avoids depending on ChromaDB chunks).
         """
-        q = self._normalize_arabic_numbers(question)
-        numbers = re.findall(r"\d+", q)
-        if not numbers:
+        q = normalize_numbers(question)
+        decree_info = extract_decree_from_question(q)
+        decree_num = decree_info.get("decree_number")
+        year = decree_info.get("year")
+
+        # Also gather all numbers in case pattern extraction missed them
+        all_numbers = re.findall(r"\d+", q)
+        year_candidates = {n for n in all_numbers if len(n) == 4}
+        decree_candidates = {n for n in all_numbers if 1 <= len(n) <= 4}
+        if decree_num:
+            decree_candidates.add(decree_num)
+        if year:
+            year_candidates.add(year)
+
+        if not decree_candidates and not year_candidates:
             return [], []
 
         try:
@@ -482,32 +538,64 @@ class ChatbotService:
             data = json.loads(meta_path.read_text(encoding="utf-8"))
             files = data.get("files", data) if isinstance(data, dict) else data
 
-            year_candidates = [n for n in numbers if len(n) == 4]
-            decree_candidates = [n for n in numbers if len(n) <= 3]
-
-            matched_ids = []
+            matched: List[Dict] = []
             for f in files:
                 if f.get("status", "ready") != "ready":
                     continue
-                file_year = str(f.get("year", ""))
-                file_decree = str(f.get("decree_number", ""))
-                year_match = any(yc == file_year for yc in year_candidates) if year_candidates else False
-                decree_match = any(dc == file_decree for dc in decree_candidates) if decree_candidates else False
-                if year_match and decree_match:
-                    matched_ids.append(f["id"])
-                elif year_match and not decree_candidates:
-                    matched_ids.append(f["id"])
 
-            if not matched_ids:
+                # Normalize stored decree/year numbers
+                sd = f.get("structured_data") or {}
+                file_decree = normalize_numbers(str(
+                    sd.get("decree_number") or sd.get("circular_number") or
+                    f.get("decree_number") or ""
+                )).strip()
+                file_year = normalize_numbers(str(
+                    sd.get("year") or f.get("year") or ""
+                )).strip()
+
+                decree_match = bool(decree_candidates and file_decree and file_decree in decree_candidates)
+                year_match = bool(year_candidates and file_year and file_year in year_candidates)
+
+                if decree_match and year_match:
+                    matched.append(f)
+                elif decree_match and not year_candidates:
+                    matched.append(f)
+                elif year_match and not decree_candidates:
+                    matched.append(f)
+
+            if not matched:
                 return [], []
 
-            # Fetch from ChromaDB by file_id
-            result = self.collection.get(
-                where={"file_id": {"$in": matched_ids[:5]}},
-                include=["documents", "metadatas"],
-            )
-            docs = result.get("documents") or []
-            metas = result.get("metadatas") or []
+            docs, metas = [], []
+            for f in matched[:5]:
+                file_id = f.get("id") or f.get("file_id", "")
+                # Prefer stored clean text; fall back to summary/topic
+                text = load_stored_text_chatbot(file_id, self.base_dir)
+                if not text:
+                    text = " ".join(filter(None, [
+                        f.get("summary", ""),
+                        f.get("main_topic", ""),
+                        f.get("document_type", ""),
+                        f.get("original_filename", ""),
+                    ]))
+                if not text:
+                    continue
+                meta = {
+                    "file_id": file_id,
+                    "original_filename": f.get("original_filename", ""),
+                    "file_name": f.get("file_name", ""),
+                    "department_name_ar": f.get("department_name_ar", ""),
+                    "department_name_en": f.get("department_name_en", ""),
+                    "section_name_ar": f.get("section_name_ar", ""),
+                    "section_name_en": f.get("section_name_en", ""),
+                    "year": file_year,
+                    "decree_number": file_decree,
+                    "doc_type": f.get("doc_type", ""),
+                    "is_public": str(f.get("is_public", True)),
+                }
+                docs.append(text[:4000])  # cap to avoid huge context
+                metas.append(meta)
+
             return docs, metas
         except Exception as exc:
             logger.warning("Metadata keyword search failed: %s", exc)
@@ -515,39 +603,48 @@ class ChatbotService:
 
     def _direct_chromadb_search(self, query: str, n_results: int = 5) -> Tuple[List[str], List[Dict]]:
         """
-        Multi-query ChromaDB search with keyword fallback.
-        Tries multiple query variations; deduplicates results by document content.
+        Multi-query ChromaDB search with distance threshold and metadata fallback.
+        Normalizes Arabic numbers, tries variations, deduplicates by file_id chunk key.
         """
-        variations = self._build_query_variations(query)
-        seen_docs: Dict[str, Dict] = {}  # doc_hash -> (doc, meta)
+        norm_query = normalize_numbers(query)
+        variations = self._build_query_variations(norm_query)
+        # doc_key -> (doc, meta, distance)
+        seen_docs: Dict[str, tuple] = {}
 
         for variation in variations:
             try:
                 results = self.collection.query(
                     query_texts=[variation],
                     n_results=n_results,
-                    include=["documents", "metadatas"],
+                    include=["documents", "metadatas", "distances"],
                 )
-                docs = results.get("documents", [[]])[0] or []
-                metas = results.get("metadatas", [[]])[0] or []
-                for doc, meta in zip(docs, metas):
-                    key = (doc or "")[:80]  # deduplicate by first 80 chars
+                docs  = results.get("documents",  [[]])[0] or []
+                metas = results.get("metadatas",   [[]])[0] or []
+                dists = results.get("distances",   [[]])[0] or []
+                for doc, meta, dist in zip(docs, metas, dists):
+                    # Accept results with distance < 1.5 (permissive threshold)
+                    if dist > 1.5:
+                        continue
+                    # Deduplicate by first 80 chars of content
+                    key = (doc or "")[:80]
                     if key and key not in seen_docs:
-                        seen_docs[key] = (doc, meta)
+                        seen_docs[key] = (doc, meta, dist)
             except Exception as exc:
                 logger.warning("ChromaDB variation search failed: %s", exc)
 
-        if not seen_docs:
-            # Keyword fallback via metadata
+        # Sort by distance ascending (best match first)
+        ranked = sorted(seen_docs.values(), key=lambda x: x[2])
+
+        if not ranked:
+            # Keyword/metadata fallback when vector search finds nothing
             kb_docs, kb_metas = self._metadata_keyword_search(query)
             for doc, meta in zip(kb_docs, kb_metas):
                 key = (doc or "")[:80]
                 if key and key not in seen_docs:
-                    seen_docs[key] = (doc, meta)
+                    ranked.append((doc, meta, 0.0))
 
-        pairs = list(seen_docs.values())
-        final_docs = [p[0] for p in pairs[:n_results]]
-        final_metas = [p[1] for p in pairs[:n_results]]
+        final_docs  = [r[0] for r in ranked[:n_results]]
+        final_metas = [r[1] for r in ranked[:n_results]]
         return final_docs, final_metas
 
     def stream_ask(
@@ -647,11 +744,16 @@ class ChatbotService:
             system_prompt = (
                 f"أنت المساعد الذكي الرسمي لـ {org_name}.\n"
                 "مهمتك مساعدة الموظفين والمراجعين في الاطلاع على الوثائق والقرارات واللوائح.\n"
-                "أجب فقط بناءً على الوثائق المتاحة أدناه. لا تستخدم معلومات خارجية.\n"
-                f"إذا لم تجد الإجابة، قل: {fallback}\n\n"
-                "تعامل مع التنويعات التالية كمعنى واحد:\n"
+                "أجب بناءً على الوثائق المتاحة أدناه فقط. لا تستخدم معلومات خارجية.\n\n"
+                "قواعد صارمة للرد:\n"
+                "- إذا لم تجد إجابة واضحة في الوثائق المتاحة، قل ONLY هذه الجملة بالضبط:\n"
+                f'  "{NOT_FOUND_AR}"\n'
+                "- لا تقل أبداً 'الوثيقة المتاحة تتعلق بـ' أو 'الوثائق المتاحة لدي تتضمن فقط'\n"
+                "- لا تبدأ بتعداد محتويات الوثائق إذا لم يسأل المستخدم عن ذلك\n"
+                "- اجب مباشرةً على سؤال المستخدم\n\n"
+                "تعامل مع هذه كمرادفات:\n"
                 "- 'القرار الوزاري رقم' = 'قرار وزاري رقم' = 'قرار رقم' = 'Q.V. No.'\n"
-                "- الأرقام العربية (١٢٣) تساوي الأرقام الغربية (123)\n"
+                "- الأرقام العربية (١٢٣) = الأرقام الغربية (123)\n"
                 "- 'التعميم رقم' = 'تعميم رقم'\n\n"
                 f"الوثائق المتاحة:\n{context}"
             )

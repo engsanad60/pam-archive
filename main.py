@@ -21,7 +21,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from archive_logic import ArchiveManager, CANCELLED_FILES
+from archive_logic import (
+    ArchiveManager, CANCELLED_FILES,
+    normalize_numbers, load_stored_text, chunk_text,
+)
+from chatbot_logic import extract_decree_from_question
 
 logger = logging.getLogger(__name__)
 if not logging.root.handlers:
@@ -30,7 +34,7 @@ if not logging.root.handlers:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         force=True,
     )
-from chatbot_logic import ChatbotService
+from chatbot_logic import ChatbotService  # noqa: E402 (after archive imports)
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv()
@@ -668,8 +672,140 @@ async def chat_stream(payload: ChatRequest, request: Request) -> StreamingRespon
     )
 
 
+# ── Debug / Admin utility endpoints ──────────────────────────────────────────
+
+@app.get("/api/debug/chromadb")
+async def debug_chromadb(q: str = "قرار") -> Dict[str, Any]:
+    """Inspect ChromaDB contents and test vector search."""
+    try:
+        col = chatbot_service.collection
+        total = col.count()
+        norm_q = normalize_numbers(q)
+        results = col.query(
+            query_texts=[norm_q],
+            n_results=min(5, total) if total else 1,
+            include=["documents", "metadatas", "distances"],
+        )
+        hits = [
+            {
+                "preview": (doc or "")[:200],
+                "metadata": meta,
+                "distance": round(dist, 4),
+            }
+            for doc, meta, dist in zip(
+                results["documents"][0],
+                results["metadatas"][0],
+                results["distances"][0],
+            )
+        ]
+        return {"total_documents_in_chromadb": total, "query": q, "normalized_query": norm_q, "results": hits}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@app.get("/api/debug/metadata-search")
+async def debug_metadata_search(decree: str, year: str = "") -> Dict[str, Any]:
+    """Test the metadata fallback search by decree number."""
+    from chatbot_logic import extract_decree_from_question as _edq
+    matched_docs, matched_metas = chatbot_service._metadata_keyword_search(
+        f"قرار رقم {decree}" + (f" لسنة {year}" if year else "")
+    )
+    return {
+        "decree_searched": decree,
+        "year_searched": year,
+        "files_found": len(matched_docs),
+        "previews": [(d or "")[:200] for d in matched_docs],
+        "metadatas": matched_metas,
+    }
+
+
+@app.post("/api/admin/reindex-all")
+async def reindex_all(background_tasks: BackgroundTasks) -> Dict[str, Any]:
+    """Clear ChromaDB and re-index every ready file with the current chunking logic."""
+    background_tasks.add_task(_reindex_all_task)
+    return {"message": "إعادة الفهرسة بدأت في الخلفية. تحقق من السجلات للمتابعة."}
+
+
+def _reindex_all_task() -> None:
+    """Background task: clear ChromaDB and re-index all ready files."""
+    import logging as _log
+    _logger = _log.getLogger("reindex_all")
+    try:
+        col = chatbot_service.collection
+        # Delete every document (ChromaDB requires a where filter)
+        try:
+            col.delete(where={"file_id": {"$ne": "__none__"}})
+            _logger.info("ChromaDB cleared successfully.")
+        except Exception as exc:
+            _logger.warning("Could not bulk-clear ChromaDB (will overwrite): %s", exc)
+
+        meta_path = BASE_DIR / "data" / "files_metadata.json"
+        if not meta_path.exists():
+            _logger.warning("files_metadata.json not found — nothing to re-index.")
+            return
+
+        data = json.loads(meta_path.read_text(encoding="utf-8"))
+        files = data.get("files", data) if isinstance(data, dict) else data
+        ready = [f for f in files if f.get("status") == "ready"]
+        _logger.info("Re-indexing %d ready files…", len(ready))
+
+        for f in ready:
+            file_id = f.get("id") or f.get("file_id", "")
+            if not file_id:
+                continue
+            try:
+                # Prefer previously saved clean text; fall back to pdfplumber
+                text = load_stored_text(file_id, BASE_DIR)
+                if not text:
+                    rel = f.get("relative_path", "")
+                    file_path = BASE_DIR / rel if rel else None
+                    if file_path and file_path.is_file():
+                        text = archive_manager._extract_text_pdfplumber(file_path)
+                if not text:
+                    text = " ".join(filter(None, [
+                        f.get("summary", ""), f.get("main_topic", ""),
+                        f.get("document_type", ""), f.get("original_filename", ""),
+                    ]))
+                if not text:
+                    _logger.warning("No text for file_id=%s — skipping.", file_id)
+                    continue
+
+                chroma_meta = {
+                    "file_id": file_id,
+                    "original_filename": f.get("original_filename", ""),
+                    "file_name": f.get("file_name", ""),
+                    "department": f.get("department_name_ar", ""),
+                    "department_name_ar": f.get("department_name_ar", ""),
+                    "department_name_en": f.get("department_name_en", ""),
+                    "section": f.get("section_name_ar", ""),
+                    "section_name_ar": f.get("section_name_ar", ""),
+                    "section_name_en": f.get("section_name_en", ""),
+                    "year": normalize_numbers(str(f.get("year", ""))),
+                    "decree_number": normalize_numbers(str(f.get("decree_number", ""))),
+                    "doc_type": f.get("doc_type", ""),
+                    "document_type": f.get("document_type", ""),
+                    "main_topic": f.get("main_topic", ""),
+                    "summary": f.get("summary", ""),
+                    "language": f.get("language", ""),
+                    "confidence": f.get("confidence", ""),
+                    "upload_date": f.get("upload_date", ""),
+                    "department_id": f.get("department_id", ""),
+                    "section_id": f.get("section_id", ""),
+                    "relative_path": f.get("relative_path", ""),
+                    "ocr_used": str(f.get("ocr_used", "false")).lower(),
+                    "extraction_method": f.get("extraction_method", ""),
+                }
+                archive_manager._index_document(file_id, text, chroma_meta)
+                _logger.info("Re-indexed: %s", f.get("original_filename", file_id))
+            except Exception as exc:
+                _logger.error("Failed to re-index file_id=%s: %s", file_id, exc)
+
+        _logger.info("✅ Re-indexing complete. %d files processed.", len(ready))
+    except Exception as exc:
+        _logger.exception("_reindex_all_task failed: %s", exc)
+
+
 if __name__ == "__main__":
     import uvicorn
-    import os
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

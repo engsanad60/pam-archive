@@ -25,6 +25,66 @@ logger = logging.getLogger(__name__)
 # Global set for tracking files that should be cancelled during background processing
 CANCELLED_FILES: set = set()
 
+# ── Arabic/Western numeral helpers ────────────────────────────────────────────
+
+_AR2W = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+_W2AR = str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
+
+def normalize_numbers(text: str) -> str:
+    """Convert Arabic-Indic numerals (٠-٩) to Western (0-9) in a string."""
+    if not text:
+        return text
+    return str(text).translate(_AR2W)
+
+def get_number_variants(number) -> List[str]:
+    """Return both Western and Arabic-Indic forms of a number, plus parenthesised variants."""
+    western = normalize_numbers(str(number))
+    arabic = western.translate(_W2AR)
+    return [western, arabic, f"({western})", f"( {western} )", f"({arabic})", f"( {arabic} )"]
+
+# ── Text chunking ─────────────────────────────────────────────────────────────
+
+def chunk_text(text: str, chunk_size: int = 400, overlap: int = 80) -> List[str]:
+    """Split text into overlapping word-based chunks for better retrieval."""
+    words = text.split()
+    if len(words) <= chunk_size:
+        return [text]
+    chunks: List[str] = []
+    i = 0
+    while i < len(words):
+        chunk = " ".join(words[i: i + chunk_size])
+        if chunk.strip():
+            chunks.append(chunk)
+        i += chunk_size - overlap
+    return chunks if chunks else [text]
+
+# ── Stored text helpers ───────────────────────────────────────────────────────
+
+def _texts_dir(base_dir: Path) -> Path:
+    d = base_dir / "data" / "texts"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+def save_stored_text(file_id: str, text: str, base_dir: Path) -> str:
+    """Persist extracted/cleaned text to disk and return the path."""
+    path = _texts_dir(base_dir) / f"{file_id}.txt"
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+def load_stored_text(file_id: str, base_dir: Optional[Path] = None) -> str:
+    """Load previously saved extracted text from disk."""
+    search_dirs = [Path("data/texts"), Path("./data/texts")]
+    if base_dir:
+        search_dirs.insert(0, base_dir / "data" / "texts")
+    for d in search_dirs:
+        p = d / f"{file_id}.txt"
+        if p.exists():
+            try:
+                return p.read_text(encoding="utf-8")
+            except Exception:
+                pass
+    return ""
+
 DEPARTMENTS_FILE = "departments.json"
 CONFIG_FILE = "system_config.json"
 FILES_METADATA_FILE = "files_metadata.json"
@@ -604,15 +664,42 @@ class ArchiveManager:
         }
 
     def _index_document(self, file_id: str, text: str, metadata: Dict[str, str]) -> None:
-        self.chroma_collection.delete(where={"file_id": file_id})
-        vector_store = ChromaVectorStore(chroma_collection=self.chroma_collection)
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        doc = Document(text=text, metadata=metadata)
-        VectorStoreIndex.from_documents(
-            [doc],
-            storage_context=storage_context,
-            embed_model=self.embedding_model,
-        )
+        """Delete old chunks, save text to disk, then store overlapping chunks in ChromaDB."""
+        # 1. Remove previous chunks for this file
+        try:
+            self.chroma_collection.delete(where={"file_id": file_id})
+        except Exception:
+            pass
+
+        # 2. Normalize numbers in the text and key metadata fields
+        norm_text = normalize_numbers(text or "")
+        norm_meta = dict(metadata)
+        for key in ("decree_number", "year"):
+            if norm_meta.get(key):
+                norm_meta[key] = normalize_numbers(str(norm_meta[key]))
+
+        # 3. Save cleaned text to disk for later full-text fallback
+        try:
+            save_stored_text(file_id, norm_text, self.base_dir)
+            norm_meta["text_path"] = str(self.base_dir / "data" / "texts" / f"{file_id}.txt")
+        except Exception as exc:
+            logger.warning("Could not save text to disk for %s: %s", file_id, exc)
+
+        # 4. Split into overlapping chunks and store directly in ChromaDB
+        chunks = chunk_text(norm_text)
+        total = len(chunks)
+        ids, docs, metas = [], [], []
+        for i, chunk in enumerate(chunks):
+            chunk_meta = dict(norm_meta)
+            chunk_meta["chunk_index"] = str(i)
+            chunk_meta["total_chunks"] = str(total)
+            ids.append(f"{file_id}_chunk_{i}")
+            docs.append(chunk)
+            metas.append(chunk_meta)
+
+        if ids:
+            self.chroma_collection.add(documents=docs, metadatas=metas, ids=ids)
+        logger.info("Indexed %d chunk(s) for file_id=%s", total, file_id)
 
     # ── Background Processing (new fast upload flow) ──────────────────────────
 
@@ -790,7 +877,9 @@ class ArchiveManager:
             upload_date = target.get("upload_date", datetime.utcnow().date().isoformat())
             relative_path = target.get("relative_path", "")
 
-            # Step 4: Index in ChromaDB
+            # Step 4: Index in ChromaDB (normalize numbers in key fields)
+            norm_decree = normalize_numbers(str(decree_number or ""))
+            norm_year = normalize_numbers(str(year or ""))
             chroma_metadata = {
                 "file_id": file_id,
                 "original_filename": saved_name,
@@ -803,8 +892,8 @@ class ArchiveManager:
                 "section": target.get("section_name_ar", ""),
                 "section_name_ar": target.get("section_name_ar", ""),
                 "section_name_en": target.get("section_name_en", ""),
-                "year": year,
-                "decree_number": decree_number,
+                "year": norm_year,
+                "decree_number": norm_decree,
                 "pages_count": str(pages_count),
                 "confidence": confidence,
                 "document_type": document_type,
@@ -896,15 +985,18 @@ class ArchiveManager:
                 continue
 
             try:
-                # Fast extraction path — never calls Claude Vision on startup
-                text = self._extract_text_pdfplumber(file_path)
+                # Prefer previously saved cleaned text (avoids re-OCR)
+                text = load_stored_text(file_id, self.base_dir)
+                if not text.strip():
+                    # Fast extraction path — never calls Claude Vision on startup
+                    text = self._extract_text_pdfplumber(file_path)
                 if not text.strip():
                     # Fallback: reconstruct searchable text from stored metadata
                     text = " ".join(filter(None, [
                         f.get("document_type", ""),
                         f.get("main_topic", ""),
                         f.get("summary", ""),
-                        f.get("decree_number", ""),
+                        normalize_numbers(str(f.get("decree_number", ""))),
                         f.get("original_filename", ""),
                     ]))
                 if not text.strip():
@@ -922,8 +1014,8 @@ class ArchiveManager:
                     "section": f.get("section_name_ar", ""),
                     "section_name_ar": f.get("section_name_ar", ""),
                     "section_name_en": f.get("section_name_en", ""),
-                    "year": f.get("year", ""),
-                    "decree_number": f.get("decree_number", ""),
+                    "year": normalize_numbers(str(f.get("year", ""))),
+                    "decree_number": normalize_numbers(str(f.get("decree_number", ""))),
                     "pages_count": str(f.get("pages_count", "")),
                     "confidence": f.get("confidence", ""),
                     "document_type": f.get("document_type", ""),
