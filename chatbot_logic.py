@@ -414,7 +414,10 @@ class ChatbotService:
                 parts.append(f"Year {year}")
             label = " | ".join(parts)
 
-        show_source = bool(department or decree_number or section)
+        file_id = _s(metadata.get("file_id", ""))
+        is_public = bool(metadata.get("is_public", True))
+        view_url = f"/files/{file_id}/view" if file_id else ""
+        show_source = bool(department or decree_number or section or original_filename)
         return {
             "document": original_filename,
             "department": department,
@@ -423,6 +426,9 @@ class ChatbotService:
             "year": year,
             "source_label": label,
             "show_source": show_source,
+            "file_id": file_id,
+            "is_public": is_public,
+            "view_url": view_url,
         }
 
     @staticmethod
@@ -617,8 +623,25 @@ class ChatbotService:
 
             context = "\n\n---\n\n".join(docs[:3])
             source = self._build_source(metas[0] if metas else {}, lang_code)
-            # Collect source file IDs for the user portal
-            source_file_ids = [m.get("file_id", "") for m in metas if m.get("file_id")]
+            # Build rich sources list (deduplicated by file_id)
+            seen_ids: set = set()
+            sources: List[Dict[str, Any]] = []
+            for m in metas:
+                fid = m.get("file_id", "")
+                if fid and fid not in seen_ids:
+                    seen_ids.add(fid)
+                    s = self._build_source(m, lang_code)
+                    sources.append({
+                        "file_id": fid,
+                        "filename": s["document"],
+                        "department": s["department"],
+                        "section": s["section"],
+                        "decree_number": s["decree_number"],
+                        "year": s["year"],
+                        "view_url": s["view_url"],
+                        "is_public": s["is_public"],
+                    })
+            source_file_ids = [s["file_id"] for s in sources]
 
             org_name = "الهيئة العامة للقوى العاملة - دولة الكويت"
             system_prompt = (
@@ -657,7 +680,7 @@ class ChatbotService:
                 yield {"chunk": full_response, "done": False, "source": {}, "contains_violation": False}
 
             self._log_chat(q_raw, full_response, lang, False, "none", ip, session_id, int(time.time() * 1000) - start_ms)
-            yield {"chunk": "", "done": True, "source": source, "contains_violation": False, "source_file_ids": source_file_ids}
+            yield {"chunk": "", "done": True, "source": source, "sources": sources, "contains_violation": False, "source_file_ids": source_file_ids}
 
         except Exception as exc:
             logger.exception("stream_ask: ChromaDB/Claude query failed: %s", exc)
