@@ -12,10 +12,14 @@ if (typeof LangManager === 'undefined') {
   *{box-sizing:border-box;margin:0;padding:0} body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
   .admin-layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
   .admin-sidebar{background:linear-gradient(180deg,#1e3a5f 0%,#1a3256 100%);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-  .asb-brand{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
-  .asb-logo-row{display:flex;align-items:center;gap:10px}
-  .asb-name{font-size:14px;font-weight:800;line-height:1.3}
-  .asb-badge{display:inline-flex;background:rgba(201,168,76,.25);color:#c9a84c;border:1px solid rgba(201,168,76,.4);padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;margin-top:3px}
+  .asb-brand{padding:0;border-bottom:1px solid rgba(255,255,255,.15)}
+  .asb-header{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px 15px 18px;text-align:center;gap:12px}
+  .asb-sidebar-logo{width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));transition:transform .3s ease}
+  .asb-sidebar-logo:hover{transform:scale(1.05)}
+  .asb-title{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .asb-name{font-size:13px;font-weight:700;color:#fff;font-family:'Cairo',sans-serif;line-height:1.4;text-align:center}
+  .asb-sub{font-size:10px;font-weight:400;color:#c9a84c;font-family:'Cairo',sans-serif;text-align:center;opacity:.9}
+  .asb-badge{display:inline-flex;background:rgba(201,168,76,.2);color:#c9a84c;border:1px solid rgba(201,168,76,.35);padding:2px 10px;border-radius:999px;font-size:10px;font-weight:700;margin-top:2px}
   .asb-nav{flex:1;padding:10px 8px}
   .asb-section{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1px;padding:12px 8px 5px;font-weight:700}
   .asb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;text-decoration:none;color:rgba(255,255,255,.82);font-size:14px;transition:all .15s;border:1px solid transparent;margin-bottom:2px;cursor:pointer}
@@ -34,16 +38,15 @@ if (typeof LangManager === 'undefined') {
 
 <aside class="admin-sidebar">
   <div class="asb-brand">
-    <div class="asb-logo-row">
-      <!-- PAM Logo -->
+    <div class="asb-header">
       <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
-           alt="الهيئة العامة للقوى العاملة"
-           style="height:56px;width:auto;object-fit:contain;flex-shrink:0;filter:brightness(1.1)"
-           onerror="this.onerror=null;this.outerHTML='<div style=\'width:48px;height:48px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:16px;\'>PAM</div>'">
-      <div>
-        <div class="asb-name" id="systemName">الهيئة العامة للقوى العاملة</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">نظام الأرشفة والمساعد الذكي</div>
-        <div class="asb-badge">⚙️ لوحة الإدارة الرسمية</div>
+           alt="PAM Logo"
+           class="asb-sidebar-logo"
+           onerror="this.onerror=null;this.outerHTML='<div style=\'width:80px;height:80px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:20px;\'>PAM</div>'">
+      <div class="asb-title">
+        <span class="asb-name" id="systemName">الهيئة العامة للقوى العاملة</span>
+        <span class="asb-sub">نظام الأرشفة والمساعد الذكي</span>
+        <span class="asb-badge">⚙️ لوحة الإدارة الرسمية</span>
       </div>
     </div>
   </div>
