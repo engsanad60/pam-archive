@@ -266,14 +266,14 @@ const TRANSLATIONS = {
 // Language Manager
 // ═══════════════════════════════════════════════════════════
 const LangManager = {
-  current: localStorage.getItem('pam_language') || 'ar',
+  current: localStorage.getItem('language') || localStorage.getItem('pam_language') || localStorage.getItem('lang') || 'ar',
 
   init() {
     this.apply(this.current);
     this._updateToggle();
     // Listen for storage changes (cross-tab sync)
     window.addEventListener('storage', (e) => {
-      if (e.key === 'pam_language' && e.newValue && e.newValue !== this.current) {
+      if ((e.key === 'language' || e.key === 'pam_language') && e.newValue && e.newValue !== this.current) {
         this.current = e.newValue;
         this.apply(this.current);
         this._updateToggle();
@@ -283,9 +283,13 @@ const LangManager = {
 
   toggle() {
     this.current = this.current === 'ar' ? 'en' : 'ar';
+    localStorage.setItem('language', this.current);
     localStorage.setItem('pam_language', this.current);
+    localStorage.setItem('lang', this.current);
     this.apply(this.current);
     this._updateToggle();
+    // Dispatch event so other scripts on page can react
+    document.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: this.current } }));
   },
 
   apply(lang) {

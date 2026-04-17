@@ -425,20 +425,124 @@ class ChatbotService:
             "show_source": show_source,
         }
 
-    def _direct_chromadb_search(self, query: str, n_results: int = 3) -> Tuple[List[str], List[Dict]]:
-        """Direct ChromaDB query - faster than going through LlamaIndex."""
+    @staticmethod
+    def _normalize_arabic_numbers(text: str) -> str:
+        """Convert Arabic-Indic numerals (٠-٩) to Western numerals (0-9)."""
+        ar_map = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
+        return text.translate(ar_map)
+
+    @staticmethod
+    def _build_query_variations(question: str) -> List[str]:
+        """Generate query variations to maximise ChromaDB recall."""
+        q = ChatbotService._normalize_arabic_numbers(question)
+        variations = [q]
+
+        # Decree number normalisation: "قرار وزاري رقم 9 لسنة 2026" variations
+        decree_patterns = [
+            (r"القرار الوزاري رقم", "قرار وزاري رقم"),
+            (r"قرار وزاري رقم", "القرار الوزاري رقم"),
+            (r"قرار رقم", "قرار وزاري رقم"),
+            (r"التعميم رقم", "تعميم رقم"),
+            (r"تعميم رقم", "التعميم رقم"),
+            (r"أمر شراء رقم", "أمر الشراء رقم"),
+            (r"فاتورة رقم", "الفاتورة رقم"),
+        ]
+        for pat, repl in decree_patterns:
+            alt = re.sub(pat, repl, q)
+            if alt != q:
+                variations.append(alt)
+
+        # Extract key terms (decree number + year) as a short focused query
+        numbers = re.findall(r"\d+", q)
+        if numbers:
+            variations.append(" ".join(numbers))
+
+        return list(dict.fromkeys(variations))  # deduplicate preserving order
+
+    def _metadata_keyword_search(self, question: str) -> Tuple[List[str], List[Dict]]:
+        """
+        Fallback: search files_metadata.json for decree_number / year matches.
+        Returns ChromaDB docs+metas for matched file IDs.
+        """
+        q = self._normalize_arabic_numbers(question)
+        numbers = re.findall(r"\d+", q)
+        if not numbers:
+            return [], []
+
         try:
-            results = self.collection.query(
-                query_texts=[query],
-                n_results=n_results,
+            meta_path = self.base_dir / "data" / "files_metadata.json"
+            if not meta_path.exists():
+                return [], []
+            data = json.loads(meta_path.read_text(encoding="utf-8"))
+            files = data.get("files", data) if isinstance(data, dict) else data
+
+            year_candidates = [n for n in numbers if len(n) == 4]
+            decree_candidates = [n for n in numbers if len(n) <= 3]
+
+            matched_ids = []
+            for f in files:
+                if f.get("status", "ready") != "ready":
+                    continue
+                file_year = str(f.get("year", ""))
+                file_decree = str(f.get("decree_number", ""))
+                year_match = any(yc == file_year for yc in year_candidates) if year_candidates else False
+                decree_match = any(dc == file_decree for dc in decree_candidates) if decree_candidates else False
+                if year_match and decree_match:
+                    matched_ids.append(f["id"])
+                elif year_match and not decree_candidates:
+                    matched_ids.append(f["id"])
+
+            if not matched_ids:
+                return [], []
+
+            # Fetch from ChromaDB by file_id
+            result = self.collection.get(
+                where={"file_id": {"$in": matched_ids[:5]}},
                 include=["documents", "metadatas"],
             )
-            docs = results.get("documents", [[]])[0] or []
-            metas = results.get("metadatas", [[]])[0] or []
+            docs = result.get("documents") or []
+            metas = result.get("metadatas") or []
             return docs, metas
         except Exception as exc:
-            logger.warning("Direct ChromaDB search failed: %s", exc)
+            logger.warning("Metadata keyword search failed: %s", exc)
             return [], []
+
+    def _direct_chromadb_search(self, query: str, n_results: int = 5) -> Tuple[List[str], List[Dict]]:
+        """
+        Multi-query ChromaDB search with keyword fallback.
+        Tries multiple query variations; deduplicates results by document content.
+        """
+        variations = self._build_query_variations(query)
+        seen_docs: Dict[str, Dict] = {}  # doc_hash -> (doc, meta)
+
+        for variation in variations:
+            try:
+                results = self.collection.query(
+                    query_texts=[variation],
+                    n_results=n_results,
+                    include=["documents", "metadatas"],
+                )
+                docs = results.get("documents", [[]])[0] or []
+                metas = results.get("metadatas", [[]])[0] or []
+                for doc, meta in zip(docs, metas):
+                    key = (doc or "")[:80]  # deduplicate by first 80 chars
+                    if key and key not in seen_docs:
+                        seen_docs[key] = (doc, meta)
+            except Exception as exc:
+                logger.warning("ChromaDB variation search failed: %s", exc)
+
+        if not seen_docs:
+            # Keyword fallback via metadata
+            kb_docs, kb_metas = self._metadata_keyword_search(query)
+            for doc, meta in zip(kb_docs, kb_metas):
+                key = (doc or "")[:80]
+                if key and key not in seen_docs:
+                    seen_docs[key] = (doc, meta)
+
+        pairs = list(seen_docs.values())
+        final_docs = [p[0] for p in pairs[:n_results]]
+        final_metas = [p[1] for p in pairs[:n_results]]
+        return final_docs, final_metas
 
     def stream_ask(
         self,
@@ -522,6 +626,10 @@ class ChatbotService:
                 "مهمتك مساعدة الموظفين والمراجعين في الاطلاع على الوثائق والقرارات واللوائح.\n"
                 "أجب فقط بناءً على الوثائق المتاحة أدناه. لا تستخدم معلومات خارجية.\n"
                 f"إذا لم تجد الإجابة، قل: {fallback}\n\n"
+                "تعامل مع التنويعات التالية كمعنى واحد:\n"
+                "- 'القرار الوزاري رقم' = 'قرار وزاري رقم' = 'قرار رقم' = 'Q.V. No.'\n"
+                "- الأرقام العربية (١٢٣) تساوي الأرقام الغربية (123)\n"
+                "- 'التعميم رقم' = 'تعميم رقم'\n\n"
                 f"الوثائق المتاحة:\n{context}"
             )
 

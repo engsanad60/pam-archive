@@ -135,7 +135,7 @@
     <div class="sidebar-brand">
       <div class="sidebar-header">
         <img src="/static/images/pam-logo.png"
-             onerror="this.src='/static/images/pam-logo.png' onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'""
+             onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'"
              alt="الهيئة العامة للقوى العاملة"
              class="sidebar-logo">
         <div class="sidebar-title">
@@ -272,7 +272,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-let lang = localStorage.getItem('pam_language') || localStorage.getItem('lang') || 'ar';
+let lang = localStorage.getItem('language') || localStorage.getItem('pam_language') || localStorage.getItem('lang') || 'ar';
 let allFiles = [], deps = [];
 let activeView = 'docs', activeDept = '';
 let shownDocIds = new Set(); // track what's already shown in results

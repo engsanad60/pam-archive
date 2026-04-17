@@ -183,8 +183,35 @@
 <div id="toast" class="toast"></div>
 
 <script>
-const I18N={ar:{dir:'rtl',archive:'الأرشيف',search:'بحث بالاسم أو القرار',drop:'اسحب ملف PDF هنا أو اضغط للاختيار',all:'الكل',tree:'التسلسل',del:'حذف',detail:'عرض التفاصيل',confirmDelete:'هل تريد حذف الملف؟',uploadDate:'تاريخ الرفع',decree:'رقم القرار',year:'السنة',yearCustom:'سنة مخصصة (4 أرقام)',pages:'عدد الصفحات',confidence:'حالة القراءة',noSections:'لا توجد أقسام لهذه الإدارة. أضف أقساماً من لوحة التحكم.',upDep:'الإدارة',upSec:'القسم',upYear:'السنة',yearDigits:'السنة يجب أن تكون 4 أرقام'},en:{dir:'ltr',archive:'Archive',search:'Search by file name or decree',drop:'Drag PDF here or click to choose',all:'All',tree:'Browse',del:'Delete',detail:'View Details',confirmDelete:'Delete this file?',uploadDate:'Upload date',decree:'Decree',year:'Year',yearCustom:'Custom year (4 digits)',pages:'Pages',confidence:'Readability',noSections:'No sections for this department.',upDep:'Department',upSec:'Section',upYear:'Year',yearDigits:'Year must be 4 digits'}};
-let lang=localStorage.getItem('lang')||'ar',deps=[],allFiles=[],predefinedYears=[];
+const I18N={
+  ar:{dir:'rtl',archive:'الأرشيف',search:'بحث بالاسم أو القرار',drop:'اسحب ملف PDF هنا أو اضغط للاختيار',
+      all:'الكل',tree:'التسلسل',del:'حذف',detail:'عرض التفاصيل',confirmDelete:'هل تريد حذف الملف؟',
+      uploadDate:'تاريخ الرفع',decree:'رقم القرار',year:'السنة',yearCustom:'سنة مخصصة (4 أرقام)',
+      pages:'عدد الصفحات',confidence:'حالة القراءة',
+      noSections:'لا توجد أقسام لهذه الإدارة. أضف أقساماً من لوحة التحكم.',
+      upDep:'الإدارة',upSec:'القسم',upYear:'السنة',yearDigits:'السنة يجب أن تكون 4 أرقام',
+      btn_view:'عرض',btn_download:'تحميل',btn_delete:'حذف',btn_details:'عرض التفاصيل',
+      btn_cancel:'إلغاء',btn_reindex:'إعادة الفهرسة',btn_retry:'إعادة المحاولة',
+      status_processing:'جاري المعالجة',status_ready:'جاهز',status_error:'خطأ',status_cancelled:'ملغي',
+      visibility_public:'عام - يظهر للمستخدمين',visibility_private:'خاص - للشات بوت فقط',
+      doc_type_purchase_order:'أمر شراء',doc_type_invoice:'فاتورة',doc_type_contract:'عقد',
+      doc_type_circular:'تعميم',doc_type_other:'أخرى',
+      cancel_confirm:'إلغاء معالجة هذا الملف وحذفه؟',reindex_confirm:'إعادة فهرسة هذا الملف؟'},
+  en:{dir:'ltr',archive:'Archive',search:'Search by file name or decree',drop:'Drag PDF here or click to choose',
+      all:'All',tree:'Browse',del:'Delete',detail:'View Details',confirmDelete:'Delete this file?',
+      uploadDate:'Upload date',decree:'Decree',year:'Year',yearCustom:'Custom year (4 digits)',
+      pages:'Pages',confidence:'Readability',noSections:'No sections for this department.',
+      upDep:'Department',upSec:'Section',upYear:'Year',yearDigits:'Year must be 4 digits',
+      btn_view:'View',btn_download:'Download',btn_delete:'Delete',btn_details:'View Details',
+      btn_cancel:'Cancel',btn_reindex:'Re-index',btn_retry:'Retry',
+      status_processing:'Processing',status_ready:'Ready',status_error:'Error',status_cancelled:'Cancelled',
+      visibility_public:'Public - Visible to users',visibility_private:'Private - Chatbot only',
+      doc_type_purchase_order:'Purchase Order',doc_type_invoice:'Invoice',doc_type_contract:'Contract',
+      doc_type_circular:'Circular',doc_type_other:'Other',
+      cancel_confirm:'Cancel processing this file and delete it?',reindex_confirm:'Re-index this file?'}
+};
+/* Unified language key: read from both keys for backward compat */
+let lang=localStorage.getItem('language')||localStorage.getItem('lang')||'ar',deps=[],allFiles=[],predefinedYears=[];
 const expandedDept=new Set(),expandedSec=new Set();
 let nav={deptId:null,sectionId:null,year:null};
 const $=id=>document.getElementById(id); const t=k=>I18N[lang][k]||k;
@@ -196,15 +223,23 @@ function confPill(conf){const c=(conf||'').toLowerCase();if(c==='clear')return '
 function confIcon(conf){const c=(conf||'').toLowerCase();if(c==='clear')return '✅';if(c.includes('part'))return '⚠';return '❌';}
 function methodShort(m){if(m==='direct')return lang==='ar'?'نص مباشر ✅':'Direct text ✅';return 'Claude Vision 🤖';}
 function docTypeIcon(dt){return {purchase_order:'🛒',invoice:'🧾',contract:'📋',circular:'📢',other:'📄'}[dt]||'📄';}
-function docTypeLabel(dt){return {purchase_order:'أمر شراء',invoice:'فاتورة',contract:'عقد',circular:'تعميم',other:'أخرى'}[dt]||dt||'';}
-function nameDep(d){return lang==='ar'?d.name_ar:d.name_en;}
-function nameSec(s){return lang==='ar'?s.name_ar:s.name_en;}
+function docTypeLabel(dt){return t('doc_type_'+dt)||{purchase_order:'أمر شراء',invoice:'فاتورة',contract:'عقد',circular:'تعميم',other:'أخرى'}[dt]||dt||'';}
+function nameDep(d){return (lang==='ar'?(d.name_ar||d.name_en):d.name_en)||d.name||'';}
+function nameSec(s){return (lang==='ar'?(s.name_ar||s.name_en):s.name_en)||s.name||'';}
 function fileCountFor(deptId,secId,year){return allFiles.filter(f=>{if(deptId&&f.department_id!==deptId)return false;if(secId!=null&&f.section_id!==secId)return false;if(year&&String(f.year)!==String(year))return false;return true;}).length;}
 
 function applyLang(){
   document.documentElement.lang=lang;document.documentElement.dir=I18N[lang].dir;
-  $('search').placeholder=t('search');$('drop').textContent=t('drop');$('treeTitle').textContent=t('tree');$('upYearCustom').placeholder=t('yearCustom');
-  const upDep=$('upDep');if(upDep.options.length){upDep.firstElementChild.textContent=t('upDep');}
+  document.body.style.fontFamily=lang==='ar'?"'Cairo',sans-serif":"'Inter','Cairo',sans-serif";
+  $('search').placeholder=t('search');
+  const dropEl=$('drop');if(dropEl)dropEl.textContent=t('drop');
+  const treeTitle=$('treeTitle');if(treeTitle)treeTitle.textContent=t('tree');
+  const yearCust=$('upYearCustom');if(yearCust)yearCust.placeholder=t('yearCustom');
+  const upDep=$('upDep');if(upDep&&upDep.options.length){upDep.firstElementChild.textContent=t('upDep');}
+  /* update lang toggle button */
+  const btn=document.getElementById('langToggle');if(btn){btn.textContent=lang==='ar'?'EN':'عربي';}
+  /* re-render dynamic content */
+  renderTree();renderFiles();
 }
 
 async function loadDepartments(){const j=await(await fetch('/api/departments')).json();deps=j.departments||[];renderUploadSelectors();renderTree();}
@@ -337,16 +372,19 @@ function renderFiles(){
     const status=f.status||'ready';
     const d=document.createElement('div');d.className='file '+status;d.dataset.fileId=f.id;
     if(status==='processing'){
-      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><strong>📄 ${escapeHtml(f.file_name)}</strong><span class="badge" style="background:rgba(245,158,11,.15);color:#d97706">🔄 ${t('status_processing')}</span></div><div class="meta">${escapeHtml(crumb)}</div><div class="proc-steps"><span class="spin">🔄</span> 📤 تم الرفع ← 🔍 جاري القراءة ← 📊 جاري الفهرسة</div><button type="button" class="btn-cancel-proc" data-cancel="${escapeHtml(f.id)}">❌ ${t('btn_cancel_processing')}</button>`;
+      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><strong>📄 ${escapeHtml(f.file_name)}</strong><span class="badge" style="background:rgba(245,158,11,.15);color:#d97706">🔄 ${t('status_processing')}</span></div><div class="meta">${escapeHtml(crumb)}</div><div class="proc-steps"><span class="spin">🔄</span> 📤 ${lang==='ar'?'تم الرفع':'Uploaded'} ← 🔍 ${lang==='ar'?'جاري القراءة':'Reading'} ← 📊 ${lang==='ar'?'جاري الفهرسة':'Indexing'}</div><button type="button" class="btn-cancel-proc" data-cancel="${escapeHtml(f.id)}">❌ ${t('btn_cancel')}</button>`;
     } else if(status==='error'){
-      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><strong>📄 ${escapeHtml(f.file_name)}</strong><span class="badge" style="background:rgba(239,68,68,.12);color:#dc2626">❌ فشل</span></div><div class="meta">${escapeHtml(crumb)}</div><div class="meta" style="color:#dc2626;margin-top:4px;font-size:12px">${escapeHtml(f.error_message||'خطأ غير محدد')}</div><button type="button" class="btn-retry" data-retry="${escapeHtml(f.id)}">🔄 إعادة المحاولة</button><button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">${t('del')}</button>`;
+      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><strong>📄 ${escapeHtml(f.file_name)}</strong><span class="badge" style="background:rgba(239,68,68,.12);color:#dc2626">❌ ${t('status_error')}</span></div><div class="meta">${escapeHtml(crumb)}</div><div class="meta" style="color:#dc2626;margin-top:4px;font-size:12px">${escapeHtml(f.error_message||(lang==='ar'?'خطأ غير محدد':'Unknown error'))}</div><button type="button" class="btn-retry" data-retry="${escapeHtml(f.id)}">🔄 ${t('btn_retry')}</button><button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">🗑️ ${t('btn_delete')}</button>`;
     } else if(status==='cancelled'){
-      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><strong>📄 ${escapeHtml(f.file_name)}</strong><span class="badge" style="background:rgba(156,163,175,.2);color:#6b7280">🚫 ${t('status_cancelled')}</span></div><div class="meta">${escapeHtml(crumb)}</div><button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">${t('del')}</button>`;
+      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><strong>📄 ${escapeHtml(f.file_name)}</strong><span class="badge" style="background:rgba(156,163,175,.2);color:#6b7280">🚫 ${t('status_cancelled')}</span></div><div class="meta">${escapeHtml(crumb)}</div><button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">🗑️ ${t('btn_delete')}</button>`;
     } else {
       const dt=f.doc_type||'';const dtLabel=dt?`<span class="badge-type type-${escapeHtml(dt)}">${docTypeIcon(dt)} ${escapeHtml(docTypeLabel(dt))}</span>`:'';const finLine=buildFinancialLine(f);
       const isPub=f.is_public;
-      const visBadge=isPub?`<button class="vis-public" data-vis="${escapeHtml(f.id)}" data-pub="1" title="${t('visibility_public')}">🌐 عام</button>`:`<button class="vis-private" data-vis="${escapeHtml(f.id)}" data-pub="0" title="${t('visibility_private')}">🔒 خاص</button>`;
-      d.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px;align-items:start;flex-wrap:wrap"><strong>📄 ${escapeHtml(f.file_name)}</strong><div style="display:flex;gap:4px;flex-wrap:wrap">${dtLabel}${visBadge}<span class="badge">${escapeHtml(dep)}</span></div></div><div class="meta">${escapeHtml(crumb)}</div>${finLine}<div class="meta" style="margin-top:6px">${t('uploadDate')}: ${f.upload_date?new Date(f.upload_date).toLocaleDateString():'-'}<br>${t('decree')}: ${escapeHtml(f.decree_number||'-')} | ${t('year')}: ${escapeHtml(f.year||'-')}<br>${t('pages')}: ${f.pages_count||0} | ${t('confidence')}: ${confIcon(f.confidence)} ${escapeHtml(f.confidence||'Unclear')}</div><div class="meta" style="font-size:12px;color:var(--muted)">${escapeHtml(methodShort(f.extraction_method||''))}${f.ocr_used?' · OCR':''}</div><div class="meta" style="margin-top:4px">${f.summary?escapeHtml(String(f.summary).slice(0,120))+(f.summary.length>120?'...':''):''}</div><div class="card-actions"><button type="button" class="btn-view" data-view="${escapeHtml(f.id)}" data-name="${escapeHtml(f.file_name)}">👁️ ${t('btn_view')}</button><a class="btn-dl" href="/files/${escapeHtml(f.id)}/download" download>⬇️ ${t('btn_download')}</a></div><button type="button" class="btn-detail" data-detail="${escapeHtml(f.id)}">${t('detail')}</button><button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">${t('del')}</button>`;
+      const visLabel=isPub?`🌐 ${t('visibility_public').split(' ')[0]||'عام'}`:`🔒 ${t('visibility_private').split(' ')[0]||'خاص'}`;
+      const visClass=isPub?'vis-public':'vis-private';
+      const visBadge=`<button class="${visClass}" data-vis="${escapeHtml(f.id)}" data-pub="${isPub?'1':'0'}" title="${t(isPub?'visibility_public':'visibility_private')}">${visLabel}</button>`;
+      const uploadDateLabel=t('uploadDate');const decreeLabel=t('decree');const yearLabel=t('year');const pagesLabel=t('pages');const confLabel=t('confidence');
+      d.innerHTML=`<div style="display:flex;justify-content:space-between;gap:8px;align-items:start;flex-wrap:wrap"><strong>📄 ${escapeHtml(f.file_name)}</strong><div style="display:flex;gap:4px;flex-wrap:wrap">${dtLabel}${visBadge}<span class="badge">${escapeHtml(dep||'')}</span></div></div><div class="meta">${escapeHtml(crumb)}</div>${finLine}<div class="meta" style="margin-top:6px">${uploadDateLabel}: ${f.upload_date?new Date(f.upload_date).toLocaleDateString():'-'}<br>${decreeLabel}: ${escapeHtml(f.decree_number||'-')} | ${yearLabel}: ${escapeHtml(f.year||'-')}<br>${pagesLabel}: ${f.pages_count||0} | ${confLabel}: ${confIcon(f.confidence)} ${escapeHtml(f.confidence||'Unclear')}</div><div class="meta" style="font-size:12px;color:var(--muted)">${escapeHtml(methodShort(f.extraction_method||''))}${f.ocr_used?' · OCR':''}</div><div class="meta" style="margin-top:4px">${f.summary?escapeHtml(String(f.summary).slice(0,120))+(f.summary.length>120?'...':''):''}</div><div class="card-actions"><button type="button" class="btn-view" data-view="${escapeHtml(f.id)}" data-name="${escapeHtml(f.file_name)}">👁️ ${t('btn_view')}</button><a class="btn-dl" href="/files/${escapeHtml(f.id)}/download" download>⬇️ ${t('btn_download')}</a><button type="button" class="btn-reindex" data-reindex="${escapeHtml(f.id)}">🔄 ${t('btn_reindex')}</button></div><button type="button" class="btn-detail" data-detail="${escapeHtml(f.id)}">${t('btn_details')}</button><button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">🗑️ ${t('btn_delete')}</button>`;
     }
     root.appendChild(d);
   });
@@ -355,9 +393,11 @@ function renderFiles(){
   root.querySelectorAll('[data-view]').forEach(btn=>{btn.onclick=()=>openPdfModal(btn.dataset.view,btn.dataset.name);});
   root.querySelectorAll('[data-detail]').forEach(btn=>{btn.onclick=()=>showDetail(btn.dataset.detail);});
   // Cancel processing
-  root.querySelectorAll('[data-cancel]').forEach(btn=>{btn.onclick=async()=>{if(!confirm('إلغاء معالجة هذا الملف وحذفه؟'))return;const r=await fetch('/api/files/'+encodeURIComponent(btn.dataset.cancel)+'/cancel',{method:'DELETE'});const j=await r.json();toast(j.message||'تم الإلغاء',r.ok);if(r.ok){const f=allFiles.find(x=>x.id===btn.dataset.cancel);if(f)f.status='cancelled';renderFiles();}};});
+  root.querySelectorAll('[data-cancel]').forEach(btn=>{btn.onclick=async()=>{if(!confirm(t('cancel_confirm')))return;const r=await fetch('/api/files/'+encodeURIComponent(btn.dataset.cancel)+'/cancel',{method:'DELETE'});const j=await r.json();toast(j.message||(lang==='ar'?'تم الإلغاء':'Cancelled'),r.ok);if(r.ok){const f=allFiles.find(x=>x.id===btn.dataset.cancel);if(f)f.status='cancelled';renderFiles();}};});
+  // Re-index button
+  root.querySelectorAll('[data-reindex]').forEach(btn=>{btn.onclick=async()=>{if(!confirm(t('reindex_confirm')))return;const r=await fetch('/api/files/'+encodeURIComponent(btn.dataset.reindex)+'/reprocess',{method:'POST'});const j=await r.json();toast(j.message||(lang==='ar'?'جاري إعادة الفهرسة':'Re-indexing...'),r.ok);if(r.ok){const f=allFiles.find(x=>x.id===btn.dataset.reindex);if(f)f.status='processing';renderFiles();}};});
   // Visibility toggle
-  root.querySelectorAll('[data-vis]').forEach(btn=>{btn.onclick=async()=>{const fid=btn.dataset.vis;const curPub=btn.dataset.pub==='1';const newPub=!curPub;const r=await fetch('/api/files/'+encodeURIComponent(fid)+'/visibility',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_public:newPub})});const j=await r.json();if(r.ok){const f=allFiles.find(x=>x.id===fid);if(f)f.is_public=newPub;toast(newPub?'تم جعل الملف عاماً 🌐':'تم جعل الملف خاصاً 🔒');renderFiles();}else{toast(j.detail||'خطأ',false);}};});
+  root.querySelectorAll('[data-vis]').forEach(btn=>{btn.onclick=async()=>{const fid=btn.dataset.vis;const curPub=btn.dataset.pub==='1';const newPub=!curPub;const r=await fetch('/api/files/'+encodeURIComponent(fid)+'/visibility',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_public:newPub})});const j=await r.json();if(r.ok){const f=allFiles.find(x=>x.id===fid);if(f)f.is_public=newPub;toast(newPub?(lang==='ar'?'تم جعل الملف عاماً 🌐':'File set to Public 🌐'):(lang==='ar'?'تم جعل الملف خاصاً 🔒':'File set to Private 🔒'));renderFiles();}else{toast(j.detail||(lang==='ar'?'خطأ':'Error'),false);}};});
 }
 
 function showDetail(fileId){
@@ -461,7 +501,21 @@ $('detailModal').addEventListener('click',e=>{if(e.target===$('detailModal'))$('
 $('pdfModal').addEventListener('click',e=>{if(e.target===$('pdfModal'))closePdfModal();});
 
 // Update drop zone text after lang applied
-function updateDropText(){$('drop').textContent=t('drop')+' ('+( lang==='ar'?'أو اختر ملفات متعددة':'or select multiple files')+')';}
+function updateDropText(){const el=$('drop');if(el)el.textContent=t('drop')+' ('+( lang==='ar'?'أو اختر ملفات متعددة':'or select multiple files')+')';}
+
+// Language toggle handler (wired to button in sidebar)
+document.addEventListener('click',function(e){
+  if(e.target&&(e.target.id==='langToggle'||e.target.dataset.langToggle!=null)){
+    lang=lang==='ar'?'en':'ar';
+    localStorage.setItem('language',lang);localStorage.setItem('lang',lang);
+    applyLang();updateDropText();
+  }
+});
+// Also listen for language changes from translations.js LangManager
+document.addEventListener('languageChanged',function(e){
+  const newLang=(e.detail&&e.detail.lang)||localStorage.getItem('language')||'ar';
+  if(newLang!==lang){lang=newLang;applyLang();updateDropText();}
+});
 
 applyLang();updateDropText();
 (async function init(){await loadYears();await loadDepartments();await loadFiles();})();

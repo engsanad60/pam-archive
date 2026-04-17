@@ -493,13 +493,42 @@ class ArchiveManager:
             doc.close()
         return "\n".join(all_text).strip()
 
+    def _clean_ocr_text(self, raw_text: str) -> str:
+        """Send raw OCR text to Claude for correction of Arabic OCR errors."""
+        if not raw_text or len(raw_text.strip()) < 20:
+            return raw_text
+        try:
+            resp = self.anthropic_client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4000,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            "هذا نص مستخرج من مستند عربي ممسوح ضوئياً وفيه أخطاء OCR.\n"
+                            "قم بتصحيح الأخطاء الإملائية والكلمات المشوهة وأعد كتابة النص "
+                            "بشكل صحيح مع الحفاظ على المعنى الأصلي والأرقام والتواريخ.\n"
+                            "أعد النص المصحح فقط بدون أي تعليق.\n\n"
+                            f"النص:\n{raw_text}"
+                        ),
+                    }
+                ],
+            )
+            cleaned = resp.content[0].text if resp.content else raw_text
+            return cleaned.strip() if cleaned.strip() else raw_text
+        except Exception as exc:
+            logger.warning("OCR text cleaning failed (non-fatal): %s", exc)
+            return raw_text
+
     def extract_full_text_pipeline(self, pdf_path: Path) -> Dict[str, Any]:
         text = self._extract_text_pdfplumber(pdf_path)
         if len(text.strip()) > MIN_DIRECT_TEXT_CHARS:
             return {"text": text, "extraction_method": "direct", "ocr_used": False}
         vision_text = self._extract_text_claude_vision(pdf_path)
+        # Clean OCR errors from scanned PDF text
+        cleaned_text = self._clean_ocr_text(vision_text)
         return {
-            "text": vision_text.strip(),
+            "text": cleaned_text.strip(),
             "extraction_method": "claude_vision",
             "ocr_used": True,
         }

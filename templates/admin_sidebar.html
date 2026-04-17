@@ -39,10 +39,10 @@ if (typeof LangManager === 'undefined') {
 <aside class="admin-sidebar">
   <div class="asb-brand">
     <div class="asb-header">
-      <img src="/static/images/pam-logo.png" onerror="this.onerror=null;this.src='/static/images/pam-logo.png' onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'""
-           alt="PAM Logo"
-           class="asb-sidebar-logo"
-           onerror="this.onerror=null;this.outerHTML='<div style=\'width:80px;height:80px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:20px;\'>PAM</div>'">
+      <img src="/static/images/pam-logo.png"
+           onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'"
+           alt="PAM"
+           class="asb-sidebar-logo"/>
       <div class="asb-title">
         <span class="asb-name" id="systemName">الهيئة العامة للقوى العاملة</span>
         <span class="asb-sub">نظام الأرشفة والمساعد الذكي</span>
@@ -66,7 +66,7 @@ if (typeof LangManager === 'undefined') {
   <div class="asb-foot">
     <div class="asb-foot-btns">
       <button id="asbThemeBtn">🌙 الوضع</button>
-      <button id="asbLangBtn" data-lang-toggle onclick="if(typeof LangManager!=='undefined')LangManager.toggle();else{const c=localStorage.getItem('pam_language')||'ar';localStorage.setItem('pam_language',c==='ar'?'en':'ar');location.reload();}">EN</button>
+      <button id="langToggle" id="asbLangBtn" data-lang-toggle onclick="(function(){const c=localStorage.getItem('language')||localStorage.getItem('lang')||'ar';const n=c==='ar'?'en':'ar';localStorage.setItem('language',n);localStorage.setItem('lang',n);if(typeof LangManager!=='undefined'){LangManager.current=n;LangManager.apply(n);LangManager.updateToggleButton();}else{location.reload();}})()">EN</button>
     </div>
     <a href="/" class="asb-user-portal">👤 بوابة المستخدم</a>
   </div>
@@ -77,9 +77,9 @@ if (typeof LangManager === 'undefined') {
   if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
   const thBtn=document.getElementById('asbThemeBtn');
   if(thBtn) thBtn.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'light');};
-  const lgBtn=document.getElementById('asbLangBtn');
+  const lgBtn=document.getElementById('langToggle')||document.getElementById('asbLangBtn');
   if(lgBtn){
-    const lang=localStorage.getItem('pam_language')||localStorage.getItem('lang')||'ar';
+    const lang=localStorage.getItem('language')||localStorage.getItem('lang')||'ar';
     lgBtn.textContent=lang==='ar'?'EN':'عربي';
   }
   async function loadSysName(){
