@@ -11,4 +11,4 @@ RUN mkdir -p data/chromadb uploads logs static
 
 EXPOSE 8000
 
-CMD ["python", "main.py"]
+CMD ["sh", "-c", "python main.py"]
