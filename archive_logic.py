@@ -15,10 +15,8 @@ import chromadb
 import fitz
 import pdfplumber
 from anthropic import Anthropic
+from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 from dotenv import load_dotenv
-from llama_index.core import Document, StorageContext, VectorStoreIndex
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.vector_stores.chroma import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -185,12 +183,14 @@ class ArchiveManager:
         load_dotenv(self.base_dir / ".env")
         self.anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 
-        self.chroma_client = chromadb.PersistentClient(path=str(self.data_dir))
+        _chroma_path = str(self.data_dir / "chromadb")
+        os.makedirs(_chroma_path, exist_ok=True)
+        self.chroma_client = chromadb.PersistentClient(path=_chroma_path)
+        self._onnx_ef = ONNXMiniLM_L6_V2()
         self.chroma_collection = self.chroma_client.get_or_create_collection(
-            name="archive_documents"
-        )
-        self.embedding_model = HuggingFaceEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+            name="documents",
+            embedding_function=self._onnx_ef,
+            metadata={"hnsw:space": "cosine"},
         )
 
     def _migrate_and_ensure_defaults(self) -> None:

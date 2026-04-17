@@ -49,7 +49,12 @@
   <div class="admin-main">
     <div class="admin-topbar">
       <h2>🏠 لوحة الإدارة</h2>
-      <button class="refresh-btn" onclick="loadAll()">🔄 تحديث</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="refresh-btn" onclick="loadAll()">🔄 تحديث</button>
+        <button class="refresh-btn" id="reindexBtn"
+                style="background:#c9a84c;color:#1a2f4e;border-color:#c9a84c"
+                onclick="reindexAll()">🔁 إعادة فهرسة الكل</button>
+      </div>
     </div>
     <div class="admin-content">
       <!-- Stats Grid -->
@@ -180,6 +185,26 @@ async function loadRecentViol() {
 }
 
 async function loadAll() { await Promise.all([loadStats(), loadRecentFiles(), loadDeptBreakdown(), loadRecentViol()]); }
+
+async function reindexAll() {
+  const btn = $('reindexBtn');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ جاري إعادة الفهرسة...';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/admin/reindex-all', { method: 'POST' });
+    const j = await r.json();
+    btn.textContent = '✅ تمت إعادة الفهرسة';
+    btn.style.background = '#10b981';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.disabled = false; loadStats(); }, 4000);
+    alert(j.message || 'بدأت إعادة الفهرسة في الخلفية. قد تستغرق بضع دقائق.');
+  } catch (e) {
+    btn.textContent = '❌ خطأ';
+    btn.style.background = '#ef4444';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.disabled = false; }, 3000);
+  }
+}
+
 loadAll();
 setInterval(loadStats, 15000);
 </script>

@@ -10,13 +10,8 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import chromadb
 from anthropic import Anthropic as RawAnthropic
+from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
 from dotenv import load_dotenv
-from llama_index.core import Settings, StorageContext, VectorStoreIndex
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.llms.anthropic import Anthropic
-from llama_index.vector_stores.chroma import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -100,21 +95,16 @@ class ChatbotService:
 
         api_key = os.getenv("ANTHROPIC_API_KEY", "")
         self.raw_client = RawAnthropic(api_key=api_key)
-        self.llm = Anthropic(
-            model=HAIKU_MODEL,
-            api_key=api_key,
-            max_tokens=800,
-            temperature=0.0,
-        )
-        self.embed_model = HuggingFaceEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        )
-        Settings.llm = self.llm
-        Settings.embed_model = self.embed_model
 
-        self.chroma_client = chromadb.PersistentClient(path=str(self.data_dir))
-        self.collection = self.chroma_client.get_or_create_collection(name="archive_documents")
-        self._cached_query_engine: Optional[RetrieverQueryEngine] = None
+        _chroma_path = str(self.data_dir / "chromadb")
+        os.makedirs(_chroma_path, exist_ok=True)
+        self._onnx_ef = ONNXMiniLM_L6_V2()
+        self.chroma_client = chromadb.PersistentClient(path=_chroma_path)
+        self.collection = self.chroma_client.get_or_create_collection(
+            name="documents",
+            embedding_function=self._onnx_ef,
+            metadata={"hnsw:space": "cosine"},
+        )
 
     def _ensure_logs_store(self) -> None:
         if not self.logs_path.exists():
@@ -312,23 +302,6 @@ class ChatbotService:
             logger.warning("_answer_financial_query failed: %s", exc)
 
         return "", False
-
-    def _build_query_engine(self) -> RetrieverQueryEngine:
-        vector_store = ChromaVectorStore(chroma_collection=self.collection)
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        index = VectorStoreIndex.from_vector_store(
-            vector_store=vector_store,
-            storage_context=storage_context,
-            embed_model=self.embed_model,
-        )
-        retriever = VectorIndexRetriever(index=index, similarity_top_k=3)
-        return RetrieverQueryEngine.from_args(retriever=retriever, llm=self.llm)
-
-    def _get_query_engine(self) -> RetrieverQueryEngine:
-        """Lazy-initialize and cache the query engine."""
-        if self._cached_query_engine is None:
-            self._cached_query_engine = self._build_query_engine()
-        return self._cached_query_engine
 
     def _is_collection_empty(self) -> bool:
         return self.collection.count() == 0
