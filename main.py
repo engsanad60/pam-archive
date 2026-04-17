@@ -1,8 +1,11 @@
+import os
+import sys
+print(f"[STARTUP] PORT env = {os.environ.get('PORT', 'NOT SET')} | Python {sys.version}", flush=True)
+
 import asyncio
 import hashlib
 import json
 import logging
-import os
 import re
 import uuid
 from contextlib import asynccontextmanager
