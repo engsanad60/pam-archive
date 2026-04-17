@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سجل المحادثات - الهيئة العامة للقوى العاملة</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="/static/translations.js"></script>
+  <style>
+    .admin-main{padding:18px;overflow:auto;min-width:0}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+    .page-header h2{font-size:17px;font-weight:700;color:var(--primary,#1e3a5f);margin:0}
+    .card{background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:2px}
+    .stat-c{border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:12px;text-align:center}
+    .stat-c .sv{font-size:24px;font-weight:800;color:var(--primary,#1e3a5f)}
+    .stat-c .sl{font-size:12px;color:var(--muted,#6b7280);margin-top:2px}
+    .filters-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+    .fbtn{border:1px solid var(--border,#e5e7eb);background:transparent;color:var(--text,#1f2937);padding:7px 12px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:13px;text-decoration:none}
+    .fbtn.active{background:var(--primary,#1e3a5f);color:#fff;border-color:transparent}
+    .ip-search{border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:7px 12px;background:transparent;color:var(--text,#1f2937);font-family:inherit;font-size:13px;min-width:180px}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{padding:10px 8px;border-bottom:2px solid var(--border,#e5e7eb);text-align:start;font-weight:700;color:var(--muted,#6b7280);white-space:nowrap}
+    td{padding:9px 8px;border-bottom:1px solid var(--border,#e5e7eb);vertical-align:top}
+    tr.violation-row td{background:#fff5f5}
+    .ip-cell{display:flex;align-items:center;gap:6px;white-space:nowrap}
+    .ip-text{font-family:monospace;font-size:12px}
+    .ip-text.danger{color:#dc2626;font-weight:700}
+    .copy-ip{border:1px solid var(--border,#e5e7eb);background:transparent;color:var(--muted,#6b7280);padding:2px 6px;border-radius:4px;cursor:pointer;font-size:11px}
+    .copy-ip:hover{background:rgba(30,58,95,.08)}
+    .vbadge-ok{background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .vbadge-viol{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .msg-cell{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .resp-cell{max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted,#6b7280)}
+    .rt-badge{background:rgba(30,58,95,.08);color:var(--primary,#1e3a5f);padding:2px 6px;border-radius:4px;font-size:11px;font-family:monospace}
+    .toast-mini{position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;display:none;z-index:3000}
+    @media(max-width:900px){.stats-grid{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+{% set active_page = 'logs' %}
+<div class="admin-layout">
+  {% include 'admin_sidebar.html' %}
+  <main class="admin-main">
+    <div class="page-header">
+      <h2>💬 سجل المحادثات</h2>
+      <a class="fbtn" href="/api/chat/logs/export" download>⬇️ تصدير CSV</a>
+    </div>
+
+    <div class="card">
+      <div class="stats-grid">
+        <div class="stat-c"><div class="sv" id="sTotal">0</div><div class="sl">إجمالي المحادثات</div></div>
+        <div class="stat-c"><div class="sv" id="sViolations" style="color:#dc2626">0</div><div class="sl">المخالفات</div></div>
+        <div class="stat-c"><div class="sv" id="sLang">-</div><div class="sl">اللغة الأكثر</div></div>
+        <div class="stat-c"><div class="sv" id="sAvgTime">-</div><div class="sl">متوسط وقت الرد (ms)</div></div>
+        <div class="stat-c"><div class="sv" id="sUniqueIPs">-</div><div class="sl">عناوين IP مختلفة</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="filters-bar">
+        <button class="fbtn active" id="btnAll" onclick="setFilter('all',this)">الكل</button>
+        <button class="fbtn" id="btnViol" onclick="setFilter('violations',this)">⚠️ المخالفات</button>
+        <button class="fbtn" id="btnToday" onclick="setFilter('today',this)">اليوم</button>
+        <button class="fbtn" id="btnWeek" onclick="setFilter('week',this)">هذا الأسبوع</button>
+        <input class="ip-search" id="ipSearch" placeholder="🔍 بحث بعنوان IP..." oninput="renderTable()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>الوقت</th>
+              <th>عنوان IP</th>
+              <th>رسالة المستخدم</th>
+              <th>رد النظام</th>
+              <th>اللغة</th>
+              <th>وقت الرد</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toastMini" class="toast-mini">✅ تم نسخ IP</div>
+
+<script>
+let logs = [], activeFilter = 'all', ipFilter = '';
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function copyIP(ip) {
+  navigator.clipboard.writeText(ip).then(() => {
+    const t = document.getElementById('toastMini');
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 1800);
+  }).catch(() => {});
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderTable();
+}
+
+function filteredLogs() {
+  const ipTerm = (document.getElementById('ipSearch')?.value || '').trim().toLowerCase();
+  let list = logs.slice();
+  if (activeFilter === 'violations') list = list.filter(l => l.contains_violation);
+  else if (activeFilter === 'today') {
+    const today = new Date().toISOString().slice(0, 10);
+    list = list.filter(l => (l.date || l.timestamp || '').startsWith(today));
+  } else if (activeFilter === 'week') {
+    const weekAgo = new Date(Date.now() - 7*24*3600*1000).toISOString().slice(0,10);
+    list = list.filter(l => (l.date || l.timestamp || '') >= weekAgo);
+  }
+  if (ipTerm) list = list.filter(l => (l.ip_address||'').toLowerCase().includes(ipTerm));
+  return list;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = '';
+  const list = filteredLogs();
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted,#6b7280);padding:30px">لا توجد سجلات</td></tr>';
+    return;
+  }
+  list.forEach(l => {
+    const tr = document.createElement('tr');
+    if (l.contains_violation) tr.className = 'violation-row';
+    const ip = l.ip_address || 'unknown';
+    const ipClass = l.contains_violation ? 'ip-text danger' : 'ip-text';
+    const vIcon = l.contains_violation ? '⚠️' : '';
+    const rtMs = l.response_time_ms ? `<span class="rt-badge">${l.response_time_ms}ms</span>` : '-';
+    const vBadge = l.contains_violation
+      ? `<span class="vbadge-viol">⚠️ مخالفة</span>`
+      : `<span class="vbadge-ok">✅ سليم</span>`;
+
+    tr.innerHTML = `
+      <td style="white-space:nowrap">${escHtml(l.date || (l.timestamp||'').slice(0,10))}</td>
+      <td style="white-space:nowrap;font-family:monospace;font-size:12px">${escHtml(l.time || (l.timestamp||'').slice(11,19))}</td>
+      <td>
+        <div class="ip-cell">
+          ${vIcon ? `<span>${vIcon}</span>` : ''}
+          <span class="${ipClass}">${escHtml(ip)}</span>
+          <button class="copy-ip" onclick="copyIP('${escHtml(ip)}')">نسخ</button>
+        </div>
+      </td>
+      <td class="msg-cell" title="${escHtml(l.user_message)}">${escHtml((l.user_message||'').slice(0,80))}</td>
+      <td class="resp-cell" title="${escHtml(l.bot_response)}">${escHtml((l.bot_response||'').slice(0,100))}</td>
+      <td>${escHtml(l.language||'-')}</td>
+      <td>${rtMs}</td>
+      <td>${vBadge}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function init() {
+  const res = await fetch('/api/chat/logs');
+  const data = await res.json();
+  logs = data.logs || [];
+  const s = data.stats || {};
+  document.getElementById('sTotal').textContent = s.total || 0;
+  document.getElementById('sViolations').textContent = s.violations || 0;
+  document.getElementById('sLang').textContent = s.top_language || '-';
+
+  // Calculate avg response time
+  const times = logs.filter(l => l.response_time_ms > 0).map(l => l.response_time_ms);
+  document.getElementById('sAvgTime').textContent = times.length ? Math.round(times.reduce((a,b)=>a+b,0)/times.length) : '-';
+
+  // Unique IPs
+  const ips = new Set(logs.map(l => l.ip_address).filter(Boolean));
+  document.getElementById('sUniqueIPs').textContent = ips.size;
+
+  renderTable();
+}
+
+document.getElementById('ipSearch').addEventListener('input', renderTable);
+init();
+</script>
+{% include 'chat_widget.html' %}
+{% include 'chat_panel.html' %}
+</body>
+</html>

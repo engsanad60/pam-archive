@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الهيئة العامة للقوى العاملة - نظام الأرشفة الذكي</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--primary:#1e3a5f;--accent:#c9a84c;--border:#e5e7eb}
+    body.dark{--bg:#0f172a;--card:#172233;--text:#e5e7eb;--muted:#94a3b8;--border:#2c3d54}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:"Cairo",sans-serif}
+    .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    .side{background:linear-gradient(180deg,var(--primary),#294c78);color:#fff;padding:16px}
+    .brand{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);padding:10px;border-radius:12px}.brand h1{margin:0;font-size:15px}
+    .nav{display:grid;gap:8px;margin-top:14px}
+    .nav a,.nav button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;padding:9px 12px;border-radius:10px;text-decoration:none;font-family:inherit;cursor:pointer;font-size:14px}
+    .main{padding:14px;min-width:0}
+    .archive-grid{display:grid;grid-template-columns:minmax(240px,280px) 1fr;gap:14px;align-items:start}
+    @media(max-width:900px){.archive-grid{grid-template-columns:1fr}}
+    .tree-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;position:sticky;top:12px;max-height:calc(100vh - 28px);overflow:auto}
+    .tree-panel h2{margin:0 0 10px;font-size:15px;color:var(--primary)}
+    .tree-all{cursor:pointer;padding:8px 10px;border-radius:8px;margin-bottom:6px;font-weight:700;border:1px solid var(--border)}
+    .tree-all:hover,.tree-all.active{background:rgba(30,58,95,.12)}
+    .tree-dept{margin-bottom:4px}.tree-head{display:flex;align-items:center;gap:6px;padding:4px 0}
+    .tree-chev{border:none;background:transparent;cursor:pointer;font-size:12px;width:22px;color:var(--primary)}
+    .tree-name{flex:1;cursor:pointer;padding:4px 6px;border-radius:6px;font-size:14px}
+    .tree-name:hover{background:rgba(30,58,95,.08)}.tree-name.active{outline:2px solid var(--accent)}
+    .tree-sec{margin-inline-start:18px;border-inline-start:2px solid var(--border);padding-inline-start:8px}
+    .tree-year{margin-inline-start:14px;font-size:13px;color:var(--muted);cursor:pointer;padding:3px 6px;border-radius:6px;display:flex;align-items:center;gap:6px}
+    .tree-year:hover{background:rgba(201,168,76,.15)}.tree-year.active{color:var(--primary);font-weight:700}
+    .panel{min-width:0}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+    .crumbs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px;margin-bottom:10px}
+    .crumbs a,.crumbs span{color:var(--muted);text-decoration:none;cursor:pointer}
+    .crumbs a:hover,.crumbs span.crumb-link:hover{color:var(--primary);text-decoration:underline}
+    .crumbs .here{color:var(--text);font-weight:700}
+    .input,.select{width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit}
+    .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .drop{border:2px dashed #9ca3af;border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:rgba(201,168,76,.12);transition:all .2s}
+    .drop.dragover{border-color:var(--accent);background:rgba(201,168,76,.2)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+    /* File Cards */
+    .file{border:1px solid var(--border);border-radius:12px;padding:12px;position:relative}
+    .file.processing{border-color:#f59e0b;background:rgba(245,158,11,.04)}
+    .file.error{border-color:#ef4444;background:rgba(239,68,68,.04)}
+    .file.ready{border-color:var(--border)}
+    .badge{display:inline-flex;padding:3px 10px;border-radius:999px;background:rgba(30,58,95,.12);color:var(--primary);font-size:12px}
+    .badge-type{display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .type-purchase_order{background:#dbeafe;color:#1e40af}
+    .type-invoice{background:#dcfce7;color:#166534}
+    .type-contract{background:#fef3c7;color:#92400e}
+    .type-circular{background:#fce7f3;color:#9d174d}
+    .type-other,.type-{background:#f3f4f6;color:#4b5563}
+    .meta{color:var(--muted);font-size:13px;line-height:1.7}
+    .btn-danger{border:none;background:#d14343;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;width:100%;margin-top:8px}
+    .btn-detail{border:1px solid var(--primary);background:transparent;color:var(--primary);padding:8px 10px;border-radius:8px;cursor:pointer;width:100%;margin-top:4px;font-family:inherit;font-size:13px}
+    .btn-retry{border:none;background:#f59e0b;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;width:100%;margin-top:4px;font-family:inherit;font-size:13px}
+    .card-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+    .btn-view{border:none;background:#1e3a5f;color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
+    .btn-dl{border:1px solid #1e3a5f;background:transparent;color:#1e3a5f;padding:8px 10px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
+    .pdf-modal-box{width:min(900px,96vw);height:90vh;background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+    .pdf-modal-head{padding:10px 14px;background:#1e3a5f;color:#fff;display:flex;justify-content:space-between;align-items:center;border-radius:14px 14px 0 0;flex-shrink:0}
+    .pdf-modal-head h3{margin:0;font-size:15px}
+    .pdf-iframe{flex:1;border:none;width:100%;background:#525659}
+    /* Processing indicator */
+    .proc-steps{font-size:12px;color:#d97706;margin-top:6px;display:flex;align-items:center;gap:6px}
+    .spin{animation:spin .8s linear infinite;display:inline-block}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    /* Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:12px;z-index:2000}
+    .modal.show{display:flex}
+    .modal-box{width:min(720px,95vw);max-height:90vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+    .kv{display:grid;grid-template-columns:140px 1fr;gap:8px;margin:6px 0;font-size:14px}
+    .kv strong{color:var(--muted)}
+    @media(max-width:600px){.kv{grid-template-columns:1fr}}
+    .pill{display:inline-flex;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px}
+    .c-clear{background:#dcfce7;color:#166534}.c-part{background:#fef3c7;color:#92400e}.c-unclear{background:#fee2e2;color:#991b1b}
+    .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+    .btn{border:none;border-radius:10px;padding:10px 14px;cursor:pointer;font-family:inherit;font-size:14px}
+    .ok{background:#109164;color:#fff}.ghost{background:#94a3b8;color:#fff}
+    .text-scroll{max-height:200px;overflow:auto;background:rgba(30,58,95,.04);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;line-height:1.7}
+    .copy-btn{border:1px solid var(--border);background:transparent;color:var(--text);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;margin-top:4px}
+    .toast{position:fixed;top:12px;right:12px;color:#fff;padding:10px 12px;border-radius:10px;display:none;z-index:3000}.toast.ok{background:#109164}.toast.err{background:#c0392b}
+    .hint{font-size:12px;color:#b45309;margin-top:6px}
+    /* Upload progress */
+    .upload-progress{background:var(--card);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;display:none}
+    .fin-info{font-size:13px;color:var(--primary);font-weight:700;margin-top:6px;padding:6px 10px;background:rgba(30,58,95,.06);border-radius:8px}
+    .fin-amount{font-size:16px;font-weight:800;color:#c9a84c}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand" style="display:flex;gap:10px;align-items:center">
+        <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+             alt="PAM" style="height:48px;width:auto;object-fit:contain;filter:brightness(1.2)"
+             onerror="this.onerror=null;this.outerHTML='<div style=\'width:40px;height:40px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:13px;\'>PAM</div>'">
+        <div><h1 id="systemName" style="margin:0;font-size:13px;line-height:1.3">الهيئة العامة للقوى العاملة</h1><div style="font-size:10px;color:rgba(255,255,255,.5)">نظام الأرشفة الذكي</div></div>
+      </div>
+      <div class="nav">
+        <a href="/archive" id="navArchive">الأرشيف</a>
+        <a href="/analytics" id="navAnalytics">📊 التحليلات</a>
+        <a href="/admin" id="navAdmin">لوحة التحكم</a>
+        <button type="button" id="langBtn">EN</button>
+        <button type="button" id="themeBtn">الوضع</button>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="archive-grid">
+        <div class="tree-panel">
+          <h2 id="treeTitle">التسلسل</h2>
+          <div id="treeAll" class="tree-all"></div>
+          <div id="treeRoot"></div>
+        </div>
+        <div class="panel">
+          <nav class="crumbs" id="breadcrumbs" aria-label="breadcrumb"></nav>
+          <section class="card">
+            <div class="row-2" style="margin-bottom:10px"><input id="search" class="input" type="search" /></div>
+            <div class="row" style="margin-bottom:10px">
+              <select id="upDep" class="select"></select>
+              <select id="upSec" class="select"></select>
+              <select id="upYear" class="select"></select>
+              <input id="upYearCustom" class="input" type="text" inputmode="numeric" maxlength="4" placeholder="" />
+            </div>
+            <p id="noSectionsHint" class="hint" style="display:none"></p>
+            <div class="row-2">
+              <input id="fileInput" type="file" class="input" accept=".pdf">
+              <div id="drop" class="drop"></div>
+            </div>
+            <div id="uploadProgress" class="upload-progress">
+              <div>📤 تم الرفع ← 🔍 جاري القراءة ← 📊 جاري الفهرسة</div>
+              <div id="uploadMsg" style="color:var(--primary);margin-top:4px"></div>
+            </div>
+          </section>
+          <section class="card"><div id="files" class="grid"></div></section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- PDF Viewer Modal -->
+  <div id="pdfModal" class="modal" role="dialog" aria-modal="true">
+    <div class="pdf-modal-box">
+      <div class="pdf-modal-head">
+        <h3 id="pdfModalTitle">📄 عرض الملف</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a id="pdfDownloadBtn" href="#" download style="background:#c9a84c;color:#1e3a5f;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">⬇️ تحميل</a>
+          <button type="button" onclick="closePdfModal()" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+      </div>
+      <iframe id="pdfFrame" class="pdf-iframe" src="" title="PDF Viewer"></iframe>
+    </div>
+  </div>
+
+  <!-- File Details Modal -->
+  <div id="detailModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 id="detailTitle">تفاصيل الملف</h3>
+      <div id="detailContent"></div>
+      <div class="actions">
+        <button type="button" class="btn ghost" onclick="document.getElementById('detailModal').classList.remove('show')">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+const I18N={ar:{dir:'rtl',archive:'الأرشيف',analytics:'📊 التحليلات',admin:'لوحة التحكم',search:'بحث بالاسم أو القرار',drop:'اسحب ملف PDF هنا أو اضغط للاختيار',theme:'الوضع',all:'الكل',tree:'التسلسل',del:'حذف',detail:'عرض التفاصيل',confirmDelete:'هل تريد حذف الملف؟',uploadDate:'تاريخ الرفع',decree:'رقم القرار',year:'السنة',yearCustom:'سنة مخصصة (4 أرقام)',pages:'عدد الصفحات',confidence:'حالة القراءة',dept:'إدارة',sec:'قسم',noSections:'لا توجد أقسام لهذه الإدارة. أضف أقساماً من لوحة التحكم.',upDep:'الإدارة',upSec:'القسم',upYear:'السنة',yearDigits:'السنة يجب أن تكون 4 أرقام'},en:{dir:'ltr',archive:'Archive',analytics:'📊 Analytics',admin:'Control Panel',search:'Search by file name or decree',drop:'Drag PDF here or click to choose',theme:'Theme',all:'All',tree:'Browse',del:'Delete',detail:'View Details',confirmDelete:'Delete this file?',uploadDate:'Upload date',decree:'Decree',year:'Year',yearCustom:'Custom year (4 digits)',pages:'Pages',confidence:'Readability',dept:'Department',sec:'Section',noSections:'No sections for this department. Add sections in the admin panel.',upDep:'Department',upSec:'Section',upYear:'Year',yearDigits:'Year must be 4 digits'}};
+let lang=localStorage.getItem('lang')||'ar',deps=[],allFiles=[],predefinedYears=[];
+const expandedDept=new Set(),expandedSec=new Set();
+let nav={deptId:null,sectionId:null,year:null};
+const $=id=>document.getElementById(id); const t=k=>I18N[lang][k]||k;
+
+function toast(msg,ok=true){const d=$('toast');d.textContent=msg;d.className='toast '+(ok?'ok':'err');d.style.display='block';setTimeout(()=>d.style.display='none',3000);}
+function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(n){if(n==null||n==='')return '-';const num=parseFloat(n);if(isNaN(num))return String(n);return num.toLocaleString('ar-KW',{minimumFractionDigits:0,maximumFractionDigits:3});}
+
+function confPill(conf){const c=(conf||'').toLowerCase();if(c==='clear')return '<span class="pill c-clear">✅ Clear</span>';if(c.includes('part'))return '<span class="pill c-part">⚠ Partial</span>';return '<span class="pill c-unclear">❌ Unclear</span>';}
+function confIcon(conf){const c=(conf||'').toLowerCase();if(c==='clear')return '✅';if(c.includes('part'))return '⚠';return '❌';}
+function methodShort(m){if(m==='direct')return lang==='ar'?'نص مباشر ✅':'Direct text ✅';return 'Claude Vision 🤖';}
+function docTypeIcon(dt){const m={purchase_order:'🛒',invoice:'🧾',contract:'📋',circular:'📢',other:'📄'};return m[dt]||'📄';}
+function docTypeLabel(dt){const m={purchase_order:'أمر شراء',invoice:'فاتورة',contract:'عقد',circular:'تعميم',other:'أخرى'};return m[dt]||dt||'';}
+function nameDep(d){return lang==='ar'?d.name_ar:d.name_en;}
+function nameSec(s){return lang==='ar'?s.name_ar:s.name_en;}
+
+function fileCountFor(deptId,secId,year){
+  return allFiles.filter(f=>{
+    if(deptId&&f.department_id!==deptId)return false;
+    if(secId!=null&&f.section_id!==secId)return false;
+    if(year&&String(f.year)!==String(year))return false;
+    return true;
+  }).length;
+}
+
+function applyLang(){
+  document.documentElement.lang=lang;document.documentElement.dir=I18N[lang].dir;
+  $('navArchive').textContent=t('archive');$('navAnalytics').textContent=t('analytics');$('navAdmin').textContent=t('admin');
+  $('search').placeholder=t('search');$('drop').textContent=t('drop');$('langBtn').textContent=lang==='ar'?'EN':'AR';$('themeBtn').textContent=t('theme');
+  $('treeTitle').textContent=t('tree');
+  $('upYearCustom').placeholder=t('yearCustom');
+  const upDep=$('upDep');if(upDep.options.length){upDep.firstElementChild.textContent=t('upDep');}
+}
+
+async function loadConfig(){const c=await(await fetch('/api/config')).json();$('systemName').textContent=lang==='ar'?c.system_name_ar:c.system_name_en;}
+async function loadDepartments(){const j=await(await fetch('/api/departments')).json();deps=j.departments||[];renderUploadSelectors();renderTree();}
+async function loadFiles(){const j=await(await fetch('/api/files')).json();allFiles=j.files||[];renderTree();renderFiles();}
+async function loadYears(){const j=await(await fetch('/api/years/predefined')).json();predefinedYears=j.years||['2020','2021','2022','2023','2024','2025'];fillYearSelect($('upYear'),null,true);}
+
+function fillYearSelect(sel,detectedYear,includeEmpty){
+  const cur=sel.value;sel.innerHTML='';
+  if(includeEmpty){const o=document.createElement('option');o.value='';o.textContent=t('upYear');sel.appendChild(o);}
+  const set=new Set(predefinedYears);
+  if(detectedYear&&/^\d{4}$/.test(detectedYear))set.add(detectedYear);
+  [...set].sort().forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;sel.appendChild(o);});
+  if(detectedYear&&/^\d{4}$/.test(detectedYear))sel.value=detectedYear;
+  else if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+
+function currentDept(){return deps.find(d=>d.id===$('upDep').value);}
+function renderUploadSelectors(){
+  const dSel=$('upDep'),sSel=$('upSec');
+  const depVal=dSel.value;dSel.innerHTML='';
+  const ph=document.createElement('option');ph.value='';ph.textContent=t('upDep');dSel.appendChild(ph);
+  deps.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=nameDep(d);dSel.appendChild(o);});
+  if(depVal&&[...dSel.options].some(o=>o.value===depVal))dSel.value=depVal;
+  sSel.innerHTML='';
+  const phs=document.createElement('option');phs.value='';phs.textContent=t('upSec');sSel.appendChild(phs);
+  const dep=currentDept();
+  (dep&&dep.sections||[]).forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=nameSec(s);sSel.appendChild(o);});
+  const hint=$('noSectionsHint');
+  if(dep&&(!dep.sections||!dep.sections.length)){hint.style.display='block';hint.textContent=t('noSections');}else{hint.style.display='none';}
+  fillYearSelect($('upYear'),null,true);
+}
+
+function renderBreadcrumb(){
+  const el=$('breadcrumbs');el.innerHTML='';
+  const add=(label,onClick,isHere)=>{
+    if(el.children.length){const sep=document.createElement('span');sep.textContent=' > ';el.appendChild(sep);}
+    const node=document.createElement(onClick?'a':'span');
+    node.textContent=label;if(isHere)node.classList.add('here');
+    if(onClick){node.href='#';node.classList.add('crumb-link');node.onclick=e=>{e.preventDefault();onClick();};}
+    el.appendChild(node);
+  };
+  add(t('all'),()=>{nav={deptId:null,sectionId:null,year:null};renderTree();renderFiles();},!nav.deptId);
+  if(!nav.deptId)return;
+  const dep=deps.find(d=>d.id===nav.deptId);if(!dep)return;
+  add(nameDep(dep),()=>{nav={deptId:nav.deptId,sectionId:null,year:null};renderTree();renderFiles();},nav.deptId&&!nav.sectionId&&!nav.year);
+  if(!nav.sectionId)return;
+  const sec=(dep.sections||[]).find(s=>s.id===nav.sectionId);if(!sec)return;
+  add(nameSec(sec),()=>{nav={deptId:nav.deptId,sectionId:nav.sectionId,year:null};renderTree();renderFiles();},!!nav.sectionId&&!nav.year);
+  if(nav.year)add(String(nav.year),null,true);
+}
+
+function renderTree(){
+  $('treeAll').textContent=t('all')+(allFiles.length?' ('+allFiles.length+')':'');
+  $('treeAll').className='tree-all'+(!nav.deptId?' active':'');
+  $('treeAll').onclick=()=>{nav={deptId:null,sectionId:null,year:null};renderTree();renderFiles();};
+  const root=$('treeRoot');root.innerHTML='';
+  deps.forEach(dep=>{
+    const deptId=dep.id;
+    const dc=fileCountFor(deptId,null,null);
+    const wrap=document.createElement('div');wrap.className='tree-dept';
+    const head=document.createElement('div');head.className='tree-head';
+    const chev=document.createElement('button');chev.type='button';chev.className='tree-chev';
+    const isEx=expandedDept.has(deptId);chev.textContent=isEx?'▼':'▶';
+    chev.onclick=e=>{e.stopPropagation();if(isEx)expandedDept.delete(deptId);else expandedDept.add(deptId);renderTree();};
+    const dn=document.createElement('span');dn.className='tree-name'+(nav.deptId===deptId&&!nav.sectionId&&!nav.year?' active':'');
+    dn.textContent=nameDep(dep)+' ('+dc+')';
+    dn.onclick=()=>{nav={deptId,sectionId:null,year:null};renderTree();renderFiles();};
+    head.appendChild(chev);head.appendChild(dn);wrap.appendChild(head);
+    if(isEx){
+      const secBox=document.createElement('div');secBox.className='tree-sec';
+      (dep.sections||[]).forEach(sec=>{
+        const sid=sec.id;const sc=fileCountFor(deptId,sid,null);
+        const sw=document.createElement('div');sw.className='tree-dept';
+        const sh=document.createElement('div');sh.className='tree-head';
+        const c2=document.createElement('button');c2.type='button';c2.className='tree-chev';
+        const exS=expandedSec.has(deptId+':'+sid);c2.textContent=exS?'▼':'▶';
+        c2.onclick=e=>{e.stopPropagation();const k=deptId+':'+sid;if(exS)expandedSec.delete(k);else expandedSec.add(k);renderTree();};
+        const sn=document.createElement('span');sn.className='tree-name'+(nav.deptId===deptId&&nav.sectionId===sid&&!nav.year?' active':'');
+        sn.textContent=nameSec(sec)+' ('+sc+')';
+        sn.onclick=()=>{nav={deptId,sectionId:sid,year:null};renderTree();renderFiles();};
+        sh.appendChild(c2);sh.appendChild(sn);sw.appendChild(sh);
+        if(exS){
+          const yearsSet=new Set();
+          (dep.section_years&&dep.section_years[sid]||[]).forEach(y=>yearsSet.add(String(y)));
+          allFiles.filter(f=>f.department_id===deptId&&f.section_id===sid).forEach(f=>{if(f.year)yearsSet.add(String(f.year));});
+          const yWrap=document.createElement('div');yWrap.className='tree-sec';
+          [...yearsSet].sort().forEach(y=>{
+            const fc=fileCountFor(deptId,sid,y);
+            const yn=document.createElement('div');yn.className='tree-year'+(nav.year===y&&nav.sectionId===sid&&nav.deptId===deptId?' active':'');
+            yn.innerHTML='<span>📅 '+y+'</span><span>('+fc+')</span>';
+            yn.onclick=()=>{nav={deptId,sectionId:sid,year:y};renderTree();renderFiles();};
+            yWrap.appendChild(yn);
+          });
+          sw.appendChild(yWrap);
+        }
+        secBox.appendChild(sw);
+      });
+      wrap.appendChild(secBox);
+    }
+    root.appendChild(wrap);
+  });
+  renderBreadcrumb();
+}
+
+function filteredFiles(){
+  let list=allFiles.slice();
+  if(nav.deptId)list=list.filter(f=>f.department_id===nav.deptId);
+  if(nav.sectionId)list=list.filter(f=>f.section_id===nav.sectionId);
+  if(nav.year)list=list.filter(f=>String(f.year)===String(nav.year));
+  const term=$('search').value.trim().toLowerCase();
+  if(term)list=list.filter(f=>(f.file_name||'').toLowerCase().includes(term)||(f.decree_number||'').toLowerCase().includes(term));
+  return list;
+}
+
+function buildFinancialLine(f) {
+  const sd = f.structured_data;
+  const dt = f.doc_type;
+  if (!sd || !dt || dt === 'other' || dt === '') return '';
+  const icon = docTypeIcon(dt);
+  const label = docTypeLabel(dt);
+  let parts = [icon + ' ' + label];
+  if (dt === 'purchase_order') {
+    if (sd.po_number) parts.push('رقم: ' + sd.po_number);
+    if (sd.vendor_name) parts.push(sd.vendor_name);
+    if (sd.total_amount != null) parts.push('<span class="fin-amount">' + fmt(sd.total_amount) + ' ' + (sd.currency||'KWD') + '</span>');
+  } else if (dt === 'invoice') {
+    if (sd.invoice_number) parts.push('رقم: ' + sd.invoice_number);
+    if (sd.vendor_name) parts.push(sd.vendor_name);
+    if (sd.total_amount != null) parts.push('<span class="fin-amount">' + fmt(sd.total_amount) + ' ' + (sd.currency||'KWD') + '</span>');
+  } else if (dt === 'contract') {
+    if (sd.contract_title) parts.push(sd.contract_title);
+    const parties = [sd.party_one, sd.party_two].filter(Boolean);
+    if (parties.length) parts.push(parties.join(' - '));
+    if (sd.total_value != null) parts.push('<span class="fin-amount">' + fmt(sd.total_value) + ' ' + (sd.currency||'KWD') + '</span>');
+    if (sd.duration_months) parts.push(sd.duration_months + ' شهر');
+  } else if (dt === 'circular') {
+    if (sd.circular_number) parts.push('رقم ' + sd.circular_number + (sd.year ? ' لسنة ' + sd.year : ''));
+    if (sd.issuing_authority) parts.push(sd.issuing_authority);
+  }
+  return '<div class="fin-info">' + parts.join(' | ') + '</div>';
+}
+
+function renderFiles(){
+  const root=$('files');root.innerHTML='';
+  const list = filteredFiles();
+  if (!list.length) {
+    root.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;grid-column:1/-1">لا توجد ملفات في هذا القسم</div>';
+    return;
+  }
+  list.forEach(f=>{
+    const dep=lang==='ar'?f.department_name_ar:f.department_name_en;
+    const sec=lang==='ar'?f.section_name_ar:f.section_name_en;
+    const crumb=dep+' > '+sec+' > '+(f.year||'-');
+    const status = f.status || 'ready';
+    const d=document.createElement('div');
+    d.className='file '+status;
+    d.dataset.fileId = f.id;
+
+    if (status === 'processing') {
+      d.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+          <strong>📄 ${escapeHtml(f.file_name)}</strong>
+          <span class="badge" style="background:rgba(245,158,11,.15);color:#d97706">جاري المعالجة</span>
+        </div>
+        <div class="meta">${escapeHtml(crumb)}</div>
+        <div class="proc-steps"><span class="spin">🔄</span> 📤 تم الرفع ← 🔍 جاري القراءة ← 📊 جاري الفهرسة</div>`;
+    } else if (status === 'error') {
+      d.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+          <strong>📄 ${escapeHtml(f.file_name)}</strong>
+          <span class="badge" style="background:rgba(239,68,68,.12);color:#dc2626">❌ فشل</span>
+        </div>
+        <div class="meta">${escapeHtml(crumb)}</div>
+        <div class="meta" style="color:#dc2626;margin-top:4px;font-size:12px">${escapeHtml(f.error_message||'خطأ غير محدد')}</div>
+        <button type="button" class="btn-retry" data-retry="${escapeHtml(f.id)}">🔄 إعادة المحاولة</button>
+        <button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">${t('del')}</button>`;
+    } else {
+      const dt = f.doc_type || '';
+      const dtLabel = dt ? `<span class="badge-type type-${escapeHtml(dt)}">${docTypeIcon(dt)} ${escapeHtml(docTypeLabel(dt))}</span>` : '';
+      const finLine = buildFinancialLine(f);
+      d.innerHTML=`
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:start;flex-wrap:wrap">
+          <strong>📄 ${escapeHtml(f.file_name)}</strong>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${dtLabel}<span class="badge">${escapeHtml(dep)}</span></div>
+        </div>
+        <div class="meta">${escapeHtml(crumb)}</div>
+        ${finLine}
+        <div class="meta" style="margin-top:6px">
+          ${t('uploadDate')}: ${f.upload_date?new Date(f.upload_date).toLocaleDateString():'-'}<br>
+          ${t('decree')}: ${escapeHtml(f.decree_number||'-')} | ${t('year')}: ${escapeHtml(f.year||'-')}<br>
+          ${t('pages')}: ${f.pages_count||0} | ${t('confidence')}: ${confIcon(f.confidence)} ${escapeHtml(f.confidence||'Unclear')}
+        </div>
+        <div class="meta" style="font-size:12px;color:var(--muted)">${escapeHtml(methodShort(f.extraction_method||''))}${f.ocr_used?' · OCR':''}</div>
+        <div class="meta" style="margin-top:4px">${f.summary?escapeHtml(String(f.summary).slice(0,120))+(f.summary.length>120?'...':''):''}</div>
+        <div class="card-actions">
+          <button type="button" class="btn-view" data-view="${escapeHtml(f.id)}" data-name="${escapeHtml(f.file_name)}">👁️ عرض</button>
+          <a class="btn-dl" href="/files/${escapeHtml(f.id)}/download" download>⬇️ تحميل</a>
+        </div>
+        <button type="button" class="btn-detail" data-detail="${escapeHtml(f.id)}">${t('detail')}</button>
+        <button type="button" class="btn-danger" data-del="${escapeHtml(f.id)}">${t('del')}</button>`;
+    }
+    root.appendChild(d);
+  });
+
+  // Attach event handlers
+  root.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick=async()=>{
+      if(!confirm(t('confirmDelete')))return;
+      const r=await fetch('/api/files/by-id/'+encodeURIComponent(btn.dataset.del),{method:'DELETE'});
+      const j=await r.json();toast(j.message||'Error',r.ok);
+      if(r.ok){allFiles=allFiles.filter(f=>f.id!==btn.dataset.del);renderFiles();}
+    };
+  });
+  root.querySelectorAll('[data-retry]').forEach(btn=>{
+    btn.onclick=async()=>{
+      const r=await fetch('/api/files/'+encodeURIComponent(btn.dataset.retry)+'/reprocess',{method:'POST'});
+      const j=await r.json();toast(j.message||'Error',r.ok);
+      if(r.ok){const f=allFiles.find(x=>x.id===btn.dataset.retry);if(f)f.status='processing';renderFiles();}
+    };
+  });
+  root.querySelectorAll('[data-view]').forEach(btn=>{
+    btn.onclick=()=>openPdfModal(btn.dataset.view, btn.dataset.name);
+  });
+  root.querySelectorAll('[data-detail]').forEach(btn=>{
+    btn.onclick=()=>showDetail(btn.dataset.detail);
+  });
+}
+
+function showDetail(fileId) {
+  const f = allFiles.find(x => x.id === fileId);
+  if (!f) return;
+  const sd = f.structured_data;
+  $('detailTitle').textContent = '📄 ' + (f.file_name||'تفاصيل الملف');
+  let html = `
+    <div class="kv"><strong>اسم الملف</strong><span>${escapeHtml(f.file_name||'-')}</span></div>
+    <div class="kv"><strong>نوع المستند</strong><span>${escapeHtml(f.document_type||'-')}</span></div>
+    <div class="kv"><strong>التصنيف المالي</strong><span>${docTypeIcon(f.doc_type)} ${escapeHtml(docTypeLabel(f.doc_type))}</span></div>
+    <div class="kv"><strong>الموضوع الرئيسي</strong><span>${escapeHtml(f.main_topic||'-')}</span></div>
+    <div class="kv"><strong>رقم القرار/الأمر</strong><span>${escapeHtml(f.decree_number||'-')}</span></div>
+    <div class="kv"><strong>السنة</strong><span>${escapeHtml(f.year||'-')}</span></div>
+    <div class="kv"><strong>اللغة</strong><span>${escapeHtml(f.language||'-')}</span></div>
+    <div class="kv"><strong>عدد الصفحات</strong><span>${f.pages_count||0}</span></div>
+    <div class="kv"><strong>طريقة القراءة</strong><span>${escapeHtml(methodShort(f.extraction_method||''))}</span></div>
+    <div class="kv"><strong>حالة الفهرسة</strong><span>مفهرس ✅</span></div>
+    <div class="kv"><strong>حالة القراءة</strong><span>${confPill(f.confidence)}</span></div>
+    <div class="kv"><strong>تاريخ الرفع</strong><span>${f.upload_date?new Date(f.upload_date).toLocaleDateString():'-'}</span></div>
+    <div class="kv"><strong>الإدارة</strong><span>${escapeHtml(f.department_name_ar||'-')}</span></div>
+    <div class="kv"><strong>القسم</strong><span>${escapeHtml(f.section_name_ar||'-')}</span></div>`;
+
+  if (sd && f.doc_type && f.doc_type !== 'other') {
+    html += '<hr style="border:none;border-top:1px solid var(--border);margin:12px 0"><strong style="font-size:15px;color:var(--primary)">البيانات المالية المستخرجة</strong>';
+    Object.entries(sd).forEach(([k, v]) => {
+      if (k === 'doc_type' || v === null || v === undefined || v === '') return;
+      const vStr = Array.isArray(v) ? JSON.stringify(v, null, 2) : (typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v));
+      html += `<div class="kv"><strong>${escapeHtml(k)}</strong><span>${escapeHtml(vStr)}</span></div>`;
+    });
+  }
+
+  if (f.summary) {
+    html += `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <strong>الملخص</strong>
+    <div class="text-scroll" style="margin-top:6px">${escapeHtml(f.summary)}</div>`;
+  }
+
+  // Action buttons at bottom of details modal
+  html += `<hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button type="button" class="btn ok" onclick="closePdfAndOpenViewer('${escapeHtml(f.id)}','${escapeHtml(f.file_name)}')">👁️ فتح الملف</button>
+      <a class="btn" href="/files/${escapeHtml(f.id)}/download" download style="background:#294c78;color:#fff;text-decoration:none;text-align:center">⬇️ تحميل الملف</a>
+    </div>`;
+
+  $('detailContent').innerHTML = html;
+  $('detailModal').classList.add('show');
+}
+
+function closePdfAndOpenViewer(fileId, fileName) {
+  $('detailModal').classList.remove('show');
+  openPdfModal(fileId, fileName);
+}
+
+function openPdfModal(fileId, fileName) {
+  $('pdfModalTitle').textContent = '📄 ' + (fileName || 'عرض الملف');
+  $('pdfFrame').src = '/files/' + encodeURIComponent(fileId) + '/view';
+  $('pdfDownloadBtn').href = '/files/' + encodeURIComponent(fileId) + '/download';
+  $('pdfDownloadBtn').download = fileName || 'file.pdf';
+  $('pdfModal').classList.add('show');
+}
+
+function closePdfModal() {
+  $('pdfModal').classList.remove('show');
+  // Clear iframe src to stop loading / free memory
+  $('pdfFrame').src = '';
+}
+
+// ── Upload (fast, no verify modal) ─────────────────────────────────────────
+async function doUpload(file) {
+  const dep=$('upDep').value, sec=$('upSec').value;
+  if(!dep||!sec){toast(lang==='ar'?'اختر الإدارة والقسم':'Pick department and section',false);return;}
+  let yr=$('upYear').value.trim();
+  if($('upYearCustom').value.trim())yr=$('upYearCustom').value.trim();
+  if(!/^\d{4}$/.test(yr)){toast(t('yearDigits'),false);return;}
+
+  const fd=new FormData();
+  fd.append('file',file);fd.append('department_id',dep);fd.append('section_id',sec);fd.append('year',yr);
+
+  // Show progress bar
+  const prog = $('uploadProgress');
+  const msg = $('uploadMsg');
+  prog.style.display='block';
+  msg.textContent = '📤 جاري الرفع...';
+
+  const r=await fetch('/api/upload',{method:'POST',body:fd});
+  const j=await r.json();
+
+  if(!r.ok){prog.style.display='none';toast(j.detail||'Upload failed',false);return;}
+
+  msg.textContent = '✅ تم الرفع! جاري المعالجة في الخلفية...';
+  toast('تم الرفع! جاري المعالجة...', true);
+
+  // Add processing file card immediately
+  const depObj=deps.find(d=>d.id===dep);
+  const secObj=depObj&&(depObj.sections||[]).find(s=>s.id===sec);
+  const newFile = {
+    id: j.file_id,
+    file_name: file.name,
+    original_filename: file.name,
+    department_id: dep,
+    department_name_ar: depObj?depObj.name_ar:'',
+    department_name_en: depObj?depObj.name_en:'',
+    section_id: sec,
+    section_name_ar: secObj?secObj.name_ar:'',
+    section_name_en: secObj?secObj.name_en:'',
+    year: yr,
+    upload_date: new Date().toISOString().slice(0,10),
+    status: 'processing',
+    doc_type: '', structured_data: null,
+    decree_number:'', pages_count:0, confidence:'', document_type:'',
+    main_topic:'', summary:'', language:'', ocr_used:false, extraction_method:'',
+    error_message:'',
+  };
+  allFiles.unshift(newFile);
+  renderFiles();
+
+  setTimeout(()=>{prog.style.display='none';},3000);
+}
+
+// ── Polling callbacks from chat_widget ─────────────────────────────────────
+window._onStatusPoll = function(files) {
+  let changed = false;
+  files.forEach(f => {
+    const existing = allFiles.find(x => x.id === f.id);
+    if (existing && existing.status !== (f.status||'ready')) {
+      // Reload full data if a file changed status
+      changed = true;
+    }
+  });
+  if (changed) {
+    fetch('/api/files').then(r=>r.json()).then(j=>{
+      allFiles = j.files || [];
+      renderFiles();
+    });
+  }
+};
+
+window._onFileReady = function(fileId, statusData) {
+  fetch('/api/files').then(r=>r.json()).then(j=>{
+    allFiles = j.files || [];
+    renderFiles();
+  });
+};
+window._onFileError = window._onFileReady;
+
+// ── Event Listeners ─────────────────────────────────────────────────────────
+$('search').addEventListener('input',()=>renderFiles());
+$('upDep').addEventListener('change',renderUploadSelectors);
+$('upSec').addEventListener('change',()=>fillYearSelect($('upYear'),null,true));
+$('fileInput').addEventListener('change',e=>{const f=e.target.files[0];if(f)doUpload(f);e.target.value='';});
+$('drop').addEventListener('click',()=>$('fileInput').click());
+$('drop').addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('dragover');});
+$('drop').addEventListener('dragleave',()=>$('drop').classList.remove('dragover'));
+$('drop').addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)doUpload(f);});
+$('detailModal').addEventListener('click',e=>{if(e.target===$('detailModal'))$('detailModal').classList.remove('show');});
+$('pdfModal').addEventListener('click',e=>{if(e.target===$('pdfModal'))closePdfModal();});
+$('langBtn').onclick=()=>{lang=lang==='ar'?'en':'ar';localStorage.setItem('lang',lang);applyLang();loadConfig();renderUploadSelectors();renderTree();renderFiles();};
+$('themeBtn').onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'light');};
+if(localStorage.getItem('theme')==='dark')document.body.classList.add('dark');
+if(new URLSearchParams(location.search).get('open_chat')==='1'){localStorage.setItem('openChatWidget','1');}
+applyLang();loadConfig();
+(async function init(){await loadYears();await loadDepartments();await loadFiles();})();
+</script>
+{% include 'chat_widget.html' %}
+</body>
+</html>

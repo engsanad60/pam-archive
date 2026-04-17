@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الهيئة العامة للقوى العاملة - نظام الأرشفة الذكي</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--primary:#1e3a5f;--accent:#c9a84c;--border:#e5e7eb;--shadow:0 8px 24px rgba(0,0,0,.08)}
+    body.dark{--bg:#0f172a;--card:#172233;--text:#e5e7eb;--muted:#94a3b8;--border:#2c3d54;--shadow:0 8px 24px rgba(0,0,0,.3)}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:"Cairo",sans-serif}
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    .side{background:linear-gradient(180deg,var(--primary),#294c78);color:#fff;padding:16px}
+    .brand{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);padding:10px;border-radius:12px}.brand h1{margin:0;font-size:16px}
+    .nav{display:grid;gap:8px;margin-top:14px}.nav a,.nav button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;padding:9px 12px;border-radius:10px;text-decoration:none;font-family:inherit;cursor:pointer;font-size:14px}
+    .main{padding:18px;max-width:1100px}
+    /* Summary Cards */
+    .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+    .scard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;box-shadow:var(--shadow)}
+    .scard-icon{font-size:24px;margin-bottom:4px}
+    .scard-value{font-size:26px;font-weight:800;color:var(--primary);line-height:1}
+    .scard-label{font-size:12px;color:var(--muted);margin-top:4px}
+    .scard.s-ready .scard-value{color:#10b981}
+    .scard.s-processing .scard-value{color:#f59e0b}
+    .scard.s-error .scard-value{color:#ef4444}
+    .scard.s-warn .scard-value{color:#d97706}
+    .card{background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:14px;padding:14px;margin-bottom:12px}
+    .row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}.input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit}
+    .btn{border:none;border-radius:10px;padding:10px 12px;cursor:pointer;font-family:inherit}.save{background:var(--primary);color:#fff}.warn{background:#d14343;color:#fff}.small{padding:6px 10px;font-size:13px}
+    .dep-block{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px;background:rgba(30,58,95,.04)}
+    .dep-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .dep-head h3{margin:0;font-size:17px;color:var(--primary)}
+    .sec-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+    .sec-table th,.sec-table td{padding:8px;border-bottom:1px solid var(--border);text-align:start;vertical-align:top}
+    .sec-table th{color:var(--muted);font-weight:600}
+    .years-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+    .chip{display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,.2);padding:4px 10px;border-radius:999px;font-size:12px}
+    .year-add{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+    .select{padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;min-width:100px}
+    .toast{position:fixed;top:12px;left:12px;padding:10px 12px;color:#fff;border-radius:10px;display:none;z-index:20}.ok{background:#109164}.err{background:#c0392b}
+    @media(max-width:980px){.app{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand" style="display:flex;gap:10px;align-items:center">
+        <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+             alt="PAM" style="height:48px;width:auto;object-fit:contain;filter:brightness(1.2)"
+             onerror="this.onerror=null;this.outerHTML='<div style=\'width:40px;height:40px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:13px;\'>PAM</div>'">
+        <div><h1 id="systemName" style="margin:0;font-size:13px;line-height:1.3">الهيئة العامة للقوى العاملة</h1><div style="font-size:10px;color:rgba(255,255,255,.5)">نظام الأرشفة الذكي</div></div>
+      </div>
+      <div class="nav">
+        <a href="/archive" id="navArchive">الأرشيف</a>
+        <a href="/analytics" id="navAnalytics">📊 التحليلات</a>
+        <a href="/admin" id="navAdmin">لوحة التحكم</a>
+        <a href="/admin/logs" id="navLogs">سجلات المحادثات</a>
+        <button type="button" id="langBtn">EN</button>
+        <button type="button" id="themeBtn">الوضع</button>
+      </div>
+    </aside>
+    <main class="main">
+      <!-- Summary Cards -->
+      <div class="summary-cards" id="summaryCards">
+        <div class="scard s-ready"><div class="scard-icon">✅</div><div class="scard-value" id="scReady">-</div><div class="scard-label">مفهرسة</div></div>
+        <div class="scard s-processing"><div class="scard-icon">🔄</div><div class="scard-value" id="scProcessing">-</div><div class="scard-label">جاري المعالجة</div></div>
+        <div class="scard s-error"><div class="scard-icon">❌</div><div class="scard-value" id="scError">-</div><div class="scard-label">فشل</div></div>
+        <div class="scard s-warn"><div class="scard-icon">⚠️</div><div class="scard-value" id="scLow">-</div><div class="scard-label">جودة منخفضة</div></div>
+      </div>
+
+      <section class="card">
+        <h2 id="cfgTitle">إعدادات النظام</h2>
+        <div class="row"><input id="nameAr" class="input" placeholder="اسم النظام بالعربية"/><input id="nameEn" class="input" placeholder="System name in English"/><button type="button" class="btn save" id="saveCfg">حفظ</button></div>
+      </section>
+      <section class="card">
+        <h2 id="depTitle">إدارة الإدارات والأقسام</h2>
+        <div class="row" style="margin-bottom:14px">
+          <input id="newAr" class="input" placeholder="اسم الإدارة بالعربية"/>
+          <input id="newEn" class="input" placeholder="Department name in English"/>
+          <button type="button" class="btn save" id="addDep">إضافة إدارة</button>
+        </div>
+        <div id="departmentsMount"></div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+<script>
+const I18N={ar:{dir:'rtl',archive:'الأرشيف',analytics:'📊 التحليلات',admin:'لوحة التحكم',logs:'سجلات المحادثات',cfg:'إعدادات النظام',dep:'إدارة الإدارات والأقسام',save:'حفظ',add:'إضافة إدارة',ar:'العربية',en:'English',act:'إجراءات',edit:'تعديل',del:'حذف',confirm:'هل أنت متأكد؟',theme:'الوضع',sections:'الأقسام',addSec:'إضافة قسم',secAr:'القسم (عربي)',secEn:'Section (EN)',years:'السنوات',addYear:'إضافة سنة',yearPh:'سنة مخصصة',preYear:'اختر سنة',invalidYear:'السنة يجب أن تكون 4 أرقام'},en:{dir:'ltr',archive:'Archive',analytics:'📊 Analytics',admin:'Control Panel',logs:'Chat Logs',cfg:'System Settings',dep:'Departments & sections',save:'Save',add:'Add department',ar:'Arabic',en:'English',act:'Actions',edit:'Edit',del:'Delete',confirm:'Are you sure?',theme:'Theme',sections:'Sections',addSec:'Add section',secAr:'Section (AR)',secEn:'Section (EN)',years:'Years',addYear:'Add year',yearPh:'Custom year',preYear:'Year',invalidYear:'Year must be 4 digits'}};
+let lang=localStorage.getItem('lang')||'ar',deps=[],predefinedYears=[];
+const $=id=>document.getElementById(id); function t(k){return I18N[lang][k]||k}
+function toast(msg,ok=true){const d=$('toast');d.className='toast '+(ok?'ok':'err');d.textContent=msg;d.style.display='block';setTimeout(()=>d.style.display='none',2600);}
+function applyLang(){
+  document.documentElement.lang=lang;document.documentElement.dir=I18N[lang].dir;
+  $('navArchive').textContent=t('archive');$('navAnalytics').textContent=t('analytics');
+  $('navAdmin').textContent=t('admin');$('navLogs').textContent=t('logs');
+  $('cfgTitle').textContent=t('cfg');$('depTitle').textContent=t('dep');
+  $('saveCfg').textContent=t('save');$('addDep').textContent=t('add');
+  $('langBtn').textContent=lang==='ar'?'EN':'AR';$('themeBtn').textContent=t('theme');
+}
+async function loadConfig(){const r=await fetch('/api/config');const c=await r.json();$('systemName').textContent=lang==='ar'?c.system_name_ar:c.system_name_en;$('nameAr').value=c.system_name_ar;$('nameEn').value=c.system_name_en;}
+async function loadYears(){const j=await(await fetch('/api/years/predefined')).json();predefinedYears=j.years||['2020','2021','2022','2023','2024','2025'];}
+async function loadStats(){
+  try{
+    const j=await(await fetch('/api/chat/stats')).json();
+    $('scReady').textContent=j.ready??0;
+    $('scProcessing').textContent=j.processing??0;
+    $('scError').textContent=j.error??0;
+    $('scLow').textContent=j.low_quality??0;
+  }catch(e){}
+}
+async function loadDeps(){const r=await fetch('/api/departments');deps=(await r.json()).departments||[];renderDeps();}
+function nameDep(d){return lang==='ar'?d.name_ar:d.name_en;}
+function nameSec(s){return lang==='ar'?s.name_ar:s.name_en;}
+function sectionYears(dep,secId){const raw=(dep.section_years&&dep.section_years[secId])||[];return [...raw].sort();}
+function renderDeps(){
+  const mount=$('departmentsMount');mount.innerHTML='';
+  deps.forEach(dep=>{
+    const block=document.createElement('div');block.className='dep-block';
+    const head=document.createElement('div');head.className='dep-head';
+    const title=document.createElement('h3');title.textContent=nameDep(dep);
+    const depActions=document.createElement('div');depActions.style.display='flex';depActions.style.gap='8px';depActions.style.flexWrap='wrap';
+    const arIn=document.createElement('input');arIn.className='input';arIn.value=dep.name_ar;arIn.style.maxWidth='200px';
+    const enIn=document.createElement('input');enIn.className='input';enIn.value=dep.name_en;enIn.style.maxWidth='200px';
+    const saveDep=document.createElement('button');saveDep.type='button';saveDep.className='btn save small';saveDep.textContent=t('edit');
+    saveDep.onclick=async()=>{const r=await fetch('/api/departments/'+dep.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name_ar:arIn.value.trim(),name_en:enIn.value.trim()})});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok)loadDeps();};
+    const delDep=document.createElement('button');delDep.type='button';delDep.className='btn warn small';delDep.textContent=t('del');
+    delDep.onclick=async()=>{if(!confirm(t('confirm')))return;const r=await fetch('/api/departments/'+dep.id,{method:'DELETE'});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok)loadDeps();};
+    depActions.appendChild(arIn);depActions.appendChild(enIn);depActions.appendChild(saveDep);depActions.appendChild(delDep);
+    head.appendChild(title);head.appendChild(depActions);block.appendChild(head);
+
+    const sub=document.createElement('h4');sub.style.margin='10px 0 4px';sub.style.fontSize='15px';sub.style.color='var(--muted)';sub.textContent=t('sections');block.appendChild(sub);
+
+    const table=document.createElement('table');table.className='sec-table';
+    const thead=document.createElement('thead');thead.innerHTML='<tr><th>'+t('secAr')+'</th><th>'+t('secEn')+'</th><th>'+t('years')+'</th><th>'+t('act')+'</th></tr>';
+    table.appendChild(thead);const tb=document.createElement('tbody');
+
+    (dep.sections||[]).forEach(sec=>{
+      const tr=document.createElement('tr');
+      const tda=document.createElement('td');const sar=document.createElement('input');sar.className='input';sar.value=sec.name_ar;tda.appendChild(sar);
+      const tde=document.createElement('td');const sen=document.createElement('input');sen.className='input';sen.value=sec.name_en;tde.appendChild(sen);
+      const tdy=document.createElement('td');
+      const chips=document.createElement('div');chips.className='years-row';
+      sectionYears(dep,sec.id).forEach(y=>{const sp=document.createElement('span');sp.className='chip';sp.textContent=y;chips.appendChild(sp);});
+      tdy.appendChild(chips);
+      const yadd=document.createElement('div');yadd.className='year-add';
+      const sel=document.createElement('select');sel.className='select';
+      const o0=document.createElement('option');o0.value='';o0.textContent=t('preYear');sel.appendChild(o0);
+      predefinedYears.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;sel.appendChild(o);});
+      const ycust=document.createElement('input');ycust.className='input';ycust.style.maxWidth='100px';ycust.placeholder=t('yearPh');ycust.maxLength=4;ycust.inputMode='numeric';
+      const ybtn=document.createElement('button');ybtn.type='button';ybtn.className='btn save small';ybtn.textContent=t('addYear');
+      ybtn.onclick=async()=>{let y=sel.value.trim()||ycust.value.trim();if(!/^\d{4}$/.test(y)){toast(t('invalidYear'),false);return;}const r=await fetch('/api/departments/'+dep.id+'/sections/'+sec.id+'/years',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:y})});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok)loadDeps();};
+      yadd.appendChild(sel);yadd.appendChild(ycust);yadd.appendChild(ybtn);tdy.appendChild(yadd);
+
+      const tdc=document.createElement('td');
+      const ed=document.createElement('button');ed.type='button';ed.className='btn save small';ed.textContent=t('edit');
+      ed.onclick=async()=>{const r=await fetch('/api/departments/'+dep.id+'/sections/'+sec.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name_ar:sar.value.trim(),name_en:sen.value.trim()})});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok)loadDeps();};
+      const rm=document.createElement('button');rm.type='button';rm.className='btn warn small';rm.textContent=t('del');
+      rm.onclick=async()=>{if(!confirm(t('confirm')))return;const r=await fetch('/api/departments/'+dep.id+'/sections/'+sec.id,{method:'DELETE'});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok)loadDeps();};
+      tdc.appendChild(ed);tdc.appendChild(document.createTextNode(' '));tdc.appendChild(rm);
+
+      tr.appendChild(tda);tr.appendChild(tde);tr.appendChild(tdy);tr.appendChild(tdc);
+      tb.appendChild(tr);
+    });
+
+    const addRow=document.createElement('tr');
+    const a1=document.createElement('td');const na=document.createElement('input');na.className='input';na.placeholder=t('secAr');a1.appendChild(na);
+    const a2=document.createElement('td');const nb=document.createElement('input');nb.className='input';nb.placeholder=t('secEn');a2.appendChild(nb);
+    const a3=document.createElement('td');a3.textContent='—';
+    const a4=document.createElement('td');
+    const ab=document.createElement('button');ab.type='button';ab.className='btn save small';ab.textContent=t('addSec');
+    ab.onclick=async()=>{const r=await fetch('/api/departments/'+dep.id+'/sections',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name_ar:na.value.trim(),name_en:nb.value.trim()})});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok){na.value='';nb.value='';loadDeps();}};
+    a4.appendChild(ab);
+    addRow.appendChild(a1);addRow.appendChild(a2);addRow.appendChild(a3);addRow.appendChild(a4);
+    tb.appendChild(addRow);
+
+    table.appendChild(tb);block.appendChild(table);
+    mount.appendChild(block);
+  });
+}
+$('saveCfg').onclick=async()=>{const r=await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_name_ar:$('nameAr').value.trim(),system_name_en:$('nameEn').value.trim()})});const d=await r.json();toast((d.system_name_ar?'Saved':'Error'),r.ok);if(r.ok)loadConfig();};
+$('addDep').onclick=async()=>{const r=await fetch('/api/departments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name_ar:$('newAr').value.trim(),name_en:$('newEn').value.trim()})});const d=await r.json();toast(d.message||'OK',r.ok);if(r.ok){$('newAr').value='';$('newEn').value='';loadDeps();}};
+$('langBtn').onclick=()=>{lang=lang==='ar'?'en':'ar';localStorage.setItem('lang',lang);applyLang();loadConfig();loadDeps();};
+$('themeBtn').onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'light');};
+if(localStorage.getItem('theme')==='dark')document.body.classList.add('dark');
+applyLang();loadConfig();loadStats();
+(async function(){await loadYears();await loadDeps();})();
+setInterval(loadStats, 10000);
+</script>
+{% include 'chat_widget.html' %}
+</body>
+</html>

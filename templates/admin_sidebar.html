@@ -1,0 +1,87 @@
+<!-- Admin Sidebar - shared across all admin pages. 
+     Usage: {% set active_page = 'dashboard' %} before including -->
+<script>
+// Load translations.js once (guard against double-loading)
+if (typeof LangManager === 'undefined') {
+  document.write('<script src="/static/translations.js"><\/script>');
+}
+</script>
+<style>
+  :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--primary:#1e3a5f;--accent:#c9a84c;--border:#e5e7eb;--shadow:0 4px 18px rgba(0,0,0,.08)}
+  body.dark{--bg:#0f172a;--card:#172233;--text:#e5e7eb;--muted:#94a3b8;--border:#2c3d54;--shadow:0 4px 18px rgba(0,0,0,.3)}
+  *{box-sizing:border-box;margin:0;padding:0} body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .admin-layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+  .admin-sidebar{background:linear-gradient(180deg,#1e3a5f 0%,#1a3256 100%);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .asb-brand{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .asb-logo-row{display:flex;align-items:center;gap:10px}
+  .asb-name{font-size:14px;font-weight:800;line-height:1.3}
+  .asb-badge{display:inline-flex;background:rgba(201,168,76,.25);color:#c9a84c;border:1px solid rgba(201,168,76,.4);padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;margin-top:3px}
+  .asb-nav{flex:1;padding:10px 8px}
+  .asb-section{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1px;padding:12px 8px 5px;font-weight:700}
+  .asb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;text-decoration:none;color:rgba(255,255,255,.82);font-size:14px;transition:all .15s;border:1px solid transparent;margin-bottom:2px;cursor:pointer}
+  .asb-item:hover{background:rgba(255,255,255,.1);color:#fff}
+  .asb-item.active{background:rgba(201,168,76,.2);border-color:rgba(201,168,76,.35);color:#c9a84c;font-weight:700}
+  .asb-item .asb-icon{width:22px;text-align:center;font-size:16px;flex-shrink:0}
+  .asb-notif-badge{background:#ef4444;color:#fff;border-radius:999px;font-size:10px;padding:1px 6px;font-weight:700;margin-right:auto}
+  .asb-foot{padding:14px;border-top:1px solid rgba(255,255,255,.1)}
+  .asb-foot-btns{display:flex;gap:6px}
+  .asb-foot-btns button{flex:1;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);padding:8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px}
+  .asb-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 0}
+  .asb-user-portal{display:block;text-align:center;font-size:12px;color:rgba(255,255,255,.4);text-decoration:none;margin-top:8px;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.2)}
+  .asb-user-portal:hover{color:rgba(255,255,255,.75)}
+  @media(max-width:900px){.admin-layout{grid-template-columns:1fr}.admin-sidebar{display:none}}
+</style>
+
+<aside class="admin-sidebar">
+  <div class="asb-brand">
+    <div class="asb-logo-row">
+      <!-- PAM Logo -->
+      <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+           alt="الهيئة العامة للقوى العاملة"
+           style="height:56px;width:auto;object-fit:contain;flex-shrink:0;filter:brightness(1.1)"
+           onerror="this.onerror=null;this.outerHTML='<div style=\'width:48px;height:48px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:16px;\'>PAM</div>'">
+      <div>
+        <div class="asb-name" id="systemName">الهيئة العامة للقوى العاملة</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">نظام الأرشفة والمساعد الذكي</div>
+        <div class="asb-badge">⚙️ لوحة الإدارة الرسمية</div>
+      </div>
+    </div>
+  </div>
+  <nav class="asb-nav">
+    <div class="asb-section">القائمة الرئيسية</div>
+    <a href="/admin" class="asb-item {% if active_page=='dashboard' %}active{% endif %}"><span class="asb-icon">🏠</span> الرئيسية</a>
+    <a href="/admin/archive" class="asb-item {% if active_page=='archive' %}active{% endif %}"><span class="asb-icon">📁</span> إدارة الأرشيف</a>
+    <a href="/admin/departments" class="asb-item {% if active_page=='departments' %}active{% endif %}"><span class="asb-icon">🏢</span> الإدارات والأقسام</a>
+    <div class="asb-divider"></div>
+    <div class="asb-section">التقارير والبيانات</div>
+    <a href="/analytics" class="asb-item {% if active_page=='analytics' %}active{% endif %}"><span class="asb-icon">📊</span> التحليلات</a>
+    <a href="/admin/logs" class="asb-item {% if active_page=='logs' %}active{% endif %}"><span class="asb-icon">💬</span> سجل المحادثات</a>
+    <div class="asb-divider"></div>
+    <div class="asb-section">الإعدادات</div>
+    <a href="/admin/settings" class="asb-item {% if active_page=='settings' %}active{% endif %}"><span class="asb-icon">⚙️</span> الإعدادات</a>
+  </nav>
+  <div class="asb-foot">
+    <div class="asb-foot-btns">
+      <button id="asbThemeBtn">🌙 الوضع</button>
+      <button id="asbLangBtn" data-lang-toggle onclick="if(typeof LangManager!=='undefined')LangManager.toggle();else{const c=localStorage.getItem('pam_language')||'ar';localStorage.setItem('pam_language',c==='ar'?'en':'ar');location.reload();}">EN</button>
+    </div>
+    <a href="/" class="asb-user-portal">👤 بوابة المستخدم</a>
+  </div>
+</aside>
+
+<script>
+(function(){
+  if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
+  const thBtn=document.getElementById('asbThemeBtn');
+  if(thBtn) thBtn.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'light');};
+  const lgBtn=document.getElementById('asbLangBtn');
+  if(lgBtn){
+    const lang=localStorage.getItem('pam_language')||localStorage.getItem('lang')||'ar';
+    lgBtn.textContent=lang==='ar'?'EN':'عربي';
+  }
+  async function loadSysName(){
+    try{const c=await(await fetch('/api/config')).json();const el=document.getElementById('systemName');if(el)el.textContent=c.system_name_ar||c.system_name_en||'نظام الأرشفة الذكي';}catch{}
+  }
+  loadSysName();
+})();
+</script>

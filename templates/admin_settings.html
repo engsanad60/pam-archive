@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>الإعدادات - الهيئة العامة للقوى العاملة</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="/static/translations.js"></script>
+  <style>
+    .admin-main{min-width:0;padding:20px;overflow:auto}
+    .page-header{margin-bottom:20px}
+    .page-header h2{font-size:17px;font-weight:700;color:var(--primary,#1e3a5f);margin:0}
+    .settings-card{background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:20px;margin-bottom:14px;max-width:600px;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+    .settings-card h3{font-size:15px;font-weight:700;color:var(--primary,#1e3a5f);margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border,#e5e7eb)}
+    .field-group{margin-bottom:14px}
+    .field-label{font-size:13px;color:var(--muted,#6b7280);margin-bottom:6px;font-weight:600}
+    .field-input{width:100%;padding:11px 14px;border:1px solid var(--border,#e5e7eb);border-radius:10px;background:transparent;color:var(--text,#1f2937);font-family:inherit;font-size:14px}
+    .field-input:focus{outline:2px solid #1e3a5f;border-color:transparent}
+    .field-hint{font-size:12px;color:var(--muted,#6b7280);margin-top:4px}
+    .btn-save{background:#1e3a5f;color:#fff;border:none;padding:11px 22px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700}
+    .btn-save:hover{background:#294c78}
+    .info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb);font-size:14px}
+    .info-row:last-child{border-bottom:none}
+    .info-val{font-weight:700;color:var(--primary,#1e3a5f)}
+    .badge-ok{background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .toast{position:fixed;top:12px;right:12px;padding:10px 14px;color:#fff;border-radius:10px;display:none;z-index:3000;font-size:14px}
+    .toast.ok{background:#10b981}.toast.err{background:#ef4444}
+    .predefined-years{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .year-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(30,58,95,.08);color:#1e3a5f;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:600}
+    .year-add-row{display:flex;gap:8px;margin-top:10px;align-items:center}
+    .year-input{padding:9px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;background:transparent;color:var(--text,#1f2937);font-family:inherit;font-size:14px;width:100px}
+    .btn-add-year{background:#294c78;color:#fff;border:none;padding:9px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
+  </style>
+</head>
+<body>
+{% set active_page = 'settings' %}
+<div class="admin-layout">
+  {% include 'admin_sidebar.html' %}
+  <main class="admin-main">
+    <div class="page-header"><h2>⚙️ الإعدادات</h2></div>
+
+    <!-- System Name -->
+    <div class="settings-card">
+      <h3>🏷️ اسم النظام</h3>
+      <div class="field-group">
+        <div class="field-label">الاسم بالعربية</div>
+        <input id="nameAr" class="field-input" type="text" placeholder="نظام الأرشفة الذكي"/>
+      </div>
+      <div class="field-group">
+        <div class="field-label">الاسم بالإنجليزية</div>
+        <input id="nameEn" class="field-input" type="text" placeholder="Smart Archiving System"/>
+        <div class="field-hint">سيظهر الاسم في أعلى كل صفحة وفي بوابة المستخدم</div>
+      </div>
+      <button class="btn-save" id="saveName">💾 حفظ الاسم</button>
+    </div>
+
+    <!-- Predefined Years -->
+    <div class="settings-card">
+      <h3>📅 السنوات المتاحة للأرشفة</h3>
+      <div class="field-hint" style="margin-bottom:10px">هذه السنوات تظهر في قائمة اختيار السنة عند رفع الوثائق</div>
+      <div class="predefined-years" id="yearsContainer"></div>
+      <div class="year-add-row">
+        <input id="newYear" class="year-input" type="text" inputmode="numeric" maxlength="4" placeholder="مثل: 2026"/>
+        <button class="btn-add-year" onclick="addYear()">➕ إضافة سنة</button>
+      </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="settings-card">
+      <h3>ℹ️ معلومات النظام</h3>
+      <div class="info-row"><span>حالة قاعدة البيانات</span><span id="dbStatus">جاري الفحص...</span></div>
+      <div class="info-row"><span>عدد الوثائق المفهرسة</span><span class="info-val" id="docCount">-</span></div>
+      <div class="info-row"><span>عدد الإدارات</span><span class="info-val" id="deptCount">-</span></div>
+      <div class="info-row"><span>وثائق قيد المعالجة</span><span class="info-val" id="procCount">-</span></div>
+      <div class="info-row"><span>وثائق فشل معالجتها</span><span class="info-val" id="errCount">-</span></div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+function toast(msg, ok=true) { const d=$('toast'); d.textContent=msg; d.className='toast '+(ok?'ok':'err'); d.style.display='block'; setTimeout(()=>d.style.display='none',2600); }
+
+let predefinedYears = [];
+
+async function loadConfig() {
+  const c = await (await fetch('/api/config')).json();
+  $('nameAr').value = c.system_name_ar || '';
+  $('nameEn').value = c.system_name_en || '';
+}
+
+async function loadYears() {
+  const j = await (await fetch('/api/years/predefined')).json();
+  predefinedYears = j.years || [];
+  renderYears();
+}
+
+function renderYears() {
+  const c = $('yearsContainer'); c.innerHTML = '';
+  [...predefinedYears].sort().forEach(y => {
+    const chip = document.createElement('span'); chip.className = 'year-chip';
+    chip.innerHTML = `📅 ${y}`;
+    c.appendChild(chip);
+  });
+}
+
+async function addYear() {
+  const val = $('newYear').value.trim();
+  if (!/^\d{4}$/.test(val)) { toast('السنة يجب أن تكون 4 أرقام', false); return; }
+  const r = await fetch('/api/years/predefined', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({year: val}) });
+  const d = await r.json(); toast(d.message || (r.ok ? 'تم إضافة السنة' : 'خطأ'), r.ok);
+  if (r.ok) { $('newYear').value = ''; loadYears(); }
+}
+
+async function loadStats() {
+  try {
+    const j = await (await fetch('/api/chat/stats')).json();
+    $('docCount').textContent = j.ready ?? '-';
+    $('deptCount').textContent = j.departments_count ?? '-';
+    $('procCount').textContent = j.processing ?? 0;
+    $('errCount').textContent = j.error ?? 0;
+    $('dbStatus').innerHTML = '<span class="badge-ok">✅ متصل</span>';
+  } catch { $('dbStatus').textContent = '❌ خطأ في الاتصال'; }
+}
+
+$('saveName').onclick = async () => {
+  const r = await fetch('/api/config', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({system_name_ar: $('nameAr').value.trim(), system_name_en: $('nameEn').value.trim()}) });
+  const d = await r.json(); toast(d.system_name_ar ? '✅ تم الحفظ' : '❌ خطأ', r.ok);
+};
+
+$('newYear').addEventListener('keydown', e => { if (e.key === 'Enter') addYear(); });
+
+loadConfig(); loadYears(); loadStats();
+</script>
+{% include 'chat_widget.html' %}
+{% include 'chat_panel.html' %}
+</body>
+</html>

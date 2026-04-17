@@ -1,0 +1,195 @@
+<style>
+  .cp-panel{position:fixed;right:0;top:0;height:100vh;width:420px;background:var(--card,#fff);border-left:1px solid var(--border,#e5e7eb);box-shadow:-6px 0 28px rgba(0,0,0,.16);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:1100;display:flex;flex-direction:column}
+  .cp-panel.open{transform:translateX(0)}
+  .cp-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);background:#1e3a5f;color:#c9a84c;padding:52px 9px;border-radius:12px 0 0 12px;cursor:pointer;z-index:1099;writing-mode:vertical-rl;font-family:"Cairo",sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;box-shadow:-4px 0 14px rgba(0,0,0,.18);transition:background .2s;user-select:none}
+  .cp-tab:hover{background:#294c78}
+  .cp-head{padding:12px 16px;background:#1e3a5f;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-radius:0}
+  .cp-head-info h3{margin:0;font-size:15px;display:flex;align-items:center;gap:6px}
+  .cp-head-sub{font-size:11px;color:rgba(255,255,255,.65);margin-top:2px}
+  .cp-online{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block}
+  .cp-close{background:transparent;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0}
+  .cp-sugs{padding:8px 12px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0;background:rgba(30,58,95,.03)}
+  .cp-sug{border:1px solid var(--border,#e5e7eb);background:transparent;color:var(--text,#1f2937);padding:5px 10px;border-radius:999px;font-size:12px;cursor:pointer;font-family:"Cairo",sans-serif;transition:all .15s}
+  .cp-sug:hover{background:rgba(30,58,95,.08);border-color:#1e3a5f}
+  .cp-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .cp-msg{max-width:88%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.65;white-space:pre-wrap;border:1px solid var(--border,#e5e7eb)}
+  .cp-user{align-self:flex-end;background:#1e3a5f;color:#fff;border-color:transparent}
+  .cp-bot{align-self:flex-start;background:var(--card,#fff);color:var(--text,#1f2937)}
+  .cp-viol{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+  .cp-src{font-size:12px;color:#8d6f1f;background:rgba(201,168,76,.15);border:1px solid var(--border,#e5e7eb);padding:3px 8px;border-radius:999px;display:inline-flex;margin-top:5px}
+  .cp-typing-wrap{display:inline-flex;gap:4px}
+  .cp-typing-wrap i{width:6px;height:6px;border-radius:50%;background:#6b7280;animation:cpDot 1s infinite}
+  .cp-typing-wrap i:nth-child(2){animation-delay:.15s}.cp-typing-wrap i:nth-child(3){animation-delay:.3s}
+  @keyframes cpDot{0%,80%,100%{transform:scale(.8)}40%{transform:scale(1)}}
+  .cp-foot{padding:10px 12px;border-top:1px solid var(--border,#e5e7eb);display:flex;gap:8px;flex-shrink:0;background:var(--card,#fff)}
+  .cp-input{flex:1;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 12px;background:transparent;color:var(--text,#1f2937);font-family:"Cairo",sans-serif;font-size:14px}
+  .cp-send{background:#1e3a5f;color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-family:"Cairo",sans-serif;font-size:14px}
+  @media(max-width:768px){.cp-panel{width:100vw}.cp-tab{padding:38px 8px;font-size:12px}}
+</style>
+
+<div id="cpPanel" class="cp-panel" role="complementary" aria-label="المساعد الذكي">
+  <div class="cp-head">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+           alt="PAM" style="height:40px;width:auto;object-fit:contain;flex-shrink:0;filter:brightness(1.2)"
+           onerror="this.onerror=null;this.outerHTML='<div style=\'width:34px;height:34px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:11px;\'>PAM</div>'">
+      <div class="cp-head-info">
+        <h3 style="margin:0;font-size:14px">المساعد الذكي <span class="cp-online"></span></h3>
+        <div class="cp-head-sub" id="cpIndexedCount">📚 جاري التحميل...</div>
+      </div>
+    </div>
+    <button class="cp-close" onclick="closeChatPanel()" title="إغلاق">×</button>
+  </div>
+  <div class="cp-sugs" id="cpSuggestions">
+    <button class="cp-sug" onclick="cpSend('ما هي الوثائق المتاحة؟')">ما هي الوثائق؟</button>
+    <button class="cp-sug" onclick="cpSend('كم عدد العقود؟')">عدد العقود</button>
+    <button class="cp-sug" onclick="cpSend('ما إجمالي أوامر الشراء؟')">إجمالي أوامر الشراء</button>
+    <button class="cp-sug" onclick="cpSend('ابحث عن قرار معين')">ابحث عن قرار</button>
+  </div>
+  <div class="cp-msgs" id="cpMessages"></div>
+  <div class="cp-foot">
+    <input id="cpInput" class="cp-input" type="text" placeholder="اكتب سؤالك هنا...">
+    <button class="cp-send" onclick="cpSend()">إرسال</button>
+  </div>
+</div>
+<div id="cpTab" class="cp-tab" onclick="openChatPanel()" title="المساعد الذكي">🤖 المساعد الذكي</div>
+
+<script>
+(() => {
+  const CP_KEY = 'cp_msgs_v1';
+  let cpMsgs = [], cpWelcomed = false;
+  try { cpMsgs = JSON.parse(sessionStorage.getItem(CP_KEY) || '[]'); cpWelcomed = cpMsgs.length > 0; } catch {}
+
+  function cpSave() { sessionStorage.setItem(CP_KEY, JSON.stringify(cpMsgs)); }
+
+  function cpRender() {
+    const c = document.getElementById('cpMessages'); if (!c) return;
+    c.innerHTML = '';
+    cpMsgs.forEach(m => cpAppendEl(m, c));
+    c.scrollTop = c.scrollHeight;
+  }
+
+  function cpAppendEl(m, c) {
+    c = c || document.getElementById('cpMessages'); if (!c) return;
+    const d = document.createElement('div');
+    d.className = 'cp-msg ' + (m.role === 'user' ? 'cp-user' : 'cp-bot') + (m.viol ? ' cp-viol' : '');
+    d.textContent = m.text;
+    if (m.show_source && m.src_label) {
+      const s = document.createElement('div'); s.className = 'cp-src'; s.textContent = m.src_label;
+      d.appendChild(document.createElement('br')); d.appendChild(s);
+    }
+    c.appendChild(d); c.scrollTop = c.scrollHeight;
+  }
+
+  function cpTyping(on) {
+    const c = document.getElementById('cpMessages'); if (!c) return;
+    const ex = document.getElementById('cpTypingEl');
+    if (on && !ex) {
+      const t = document.createElement('div'); t.id = 'cpTypingEl'; t.className = 'cp-msg cp-bot';
+      t.innerHTML = '<span class="cp-typing-wrap"><i></i><i></i><i></i></span>';
+      c.appendChild(t); c.scrollTop = c.scrollHeight;
+    }
+    if (!on && ex) ex.remove();
+  }
+
+  function cpGetSessionId() {
+    let sid = sessionStorage.getItem('chat_session_id');
+    if (!sid) { sid = 'sess_' + Math.random().toString(36).slice(2,12); sessionStorage.setItem('chat_session_id', sid); }
+    return sid;
+  }
+
+  window.cpSend = async function(override) {
+    const inp = document.getElementById('cpInput');
+    const q = (override || (inp ? inp.value : '')).trim(); if (!q) return;
+    if (inp) inp.value = '';
+    cpMsgs.push({ role: 'user', text: q }); cpSave(); cpRender(); cpTyping(true);
+
+    const c = document.getElementById('cpMessages');
+    const msgEl = document.createElement('div');
+    msgEl.className = 'cp-msg cp-bot';
+    let fullText = '', finalSource = null;
+
+    try {
+      const resp = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-ID': cpGetSessionId() },
+        body: JSON.stringify({ question: q }),
+      });
+      cpTyping(false);
+      if (c) { c.appendChild(msgEl); c.scrollTop = c.scrollHeight; }
+
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split('\n\n'); buf = parts.pop() || '';
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.chunk) { fullText += data.chunk; msgEl.textContent = fullText; if (c) c.scrollTop = c.scrollHeight; }
+            if (data.done) finalSource = data.source;
+          } catch {}
+        }
+      }
+      if (finalSource?.show_source && finalSource.source_label) {
+        const s = document.createElement('div'); s.className = 'cp-src'; s.textContent = finalSource.source_label;
+        msgEl.appendChild(document.createElement('br')); msgEl.appendChild(s);
+      }
+      cpMsgs.push({ role: 'bot', text: fullText, show_source: !!finalSource?.show_source, src_label: finalSource?.source_label || '', viol: !!finalSource?.contains_violation });
+      cpSave();
+      // Save to unified history and notify portal
+      if (fullText) {
+        if (typeof ChatHistory !== 'undefined') ChatHistory.save(q, fullText, finalSource);
+        document.dispatchEvent(new CustomEvent('chatResponseReceived', { detail: { fileIds: (finalSource && finalSource.source_file_ids) || [] } }));
+      }
+    } catch (e) {
+      cpTyping(false);
+      if (c && c.contains(msgEl)) { msgEl.textContent = 'تعذر الاتصال بالخادم.'; }
+      else { cpMsgs.push({ role: 'bot', text: 'تعذر الاتصال بالخادم.' }); cpSave(); cpRender(); }
+    }
+  };
+
+  window.openChatPanel = function() {
+    const panel = document.getElementById('cpPanel'), tab = document.getElementById('cpTab');
+    if (panel) panel.classList.add('open');
+    if (tab) tab.style.display = 'none';
+    if (!cpWelcomed) {
+      cpMsgs = [{ role: 'bot', text: 'السلام عليكم! 👋 أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟\n\nيمكنني الإجابة على أسئلة عن الوثائق والبيانات المالية.' }];
+      cpWelcomed = true; cpSave();
+    }
+    cpRender();
+  };
+
+  window.closeChatPanel = function() {
+    const panel = document.getElementById('cpPanel'), tab = document.getElementById('cpTab');
+    if (panel) panel.classList.remove('open');
+    if (tab) tab.style.display = '';
+  };
+
+  const inp = document.getElementById('cpInput');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') window.cpSend(); });
+
+  // Hook into polling to update indexed count
+  window._cpUpdateCount = function(files) {
+    const n = files.filter(f => (f.status || 'ready') === 'ready').length;
+    const depts = new Set(files.filter(f => (f.status || 'ready') === 'ready').map(f => f.department_name_ar).filter(Boolean)).size;
+    const el = document.getElementById('cpIndexedCount');
+    if (el) el.textContent = `📚 ${n} وثيقة في ${depts} إدارة`;
+  };
+
+  // Register with the polling system from chat_widget.html
+  const origPoll = window._onStatusPoll;
+  window._onStatusPoll = function(files) {
+    if (origPoll) origPoll(files);
+    window._cpUpdateCount && window._cpUpdateCount(files);
+  };
+
+  cpRender();
+})();
+</script>

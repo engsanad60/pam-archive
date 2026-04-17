@@ -1,0 +1,28 @@
+# ── Web framework ───────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+jinja2>=3.1.4
+aiofiles>=23.2.1
+
+# ── Config / env ────────────────────────────────────────────
+python-dotenv>=1.0.1
+
+# ── LLM / AI ────────────────────────────────────────────────
+anthropic>=0.28.0
+
+# ── RAG / Vector store ──────────────────────────────────────
+llama-index>=0.10.40
+llama-index-llms-anthropic>=0.2.0
+llama-index-vector-stores-chroma>=0.1.10
+llama-index-embeddings-huggingface>=0.2.2
+chromadb>=0.5.0
+
+# ── Embeddings (CPU-only torch to keep image size small) ────
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+sentence-transformers>=2.7.0
+
+# ── PDF processing ──────────────────────────────────────────
+pdfplumber>=0.11.0
+pymupdf>=1.24.0

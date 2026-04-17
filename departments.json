@@ -1,0 +1,54 @@
+{
+  "departments": [
+    {
+      "id": "finance",
+      "name_ar": "Finance",
+      "name_en": "Finance",
+      "sections": [
+        {
+          "id": "79ad6ceebb",
+          "name_ar": "امر شراء",
+          "name_en": "PO"
+        }
+      ],
+      "section_years": {
+        "79ad6ceebb": [
+          "2025",
+          "2026"
+        ]
+      }
+    },
+    {
+      "id": "hr",
+      "name_ar": "HR",
+      "name_en": "HR",
+      "sections": [],
+      "section_years": {}
+    },
+    {
+      "id": "legal",
+      "name_ar": "Legal",
+      "name_en": "Legal",
+      "sections": [
+        {
+          "id": "61e9821e25",
+          "name_ar": "تعميمات",
+          "name_en": "announcement"
+        }
+      ],
+      "section_years": {
+        "61e9821e25": [
+          "2015",
+          "2021"
+        ]
+      }
+    },
+    {
+      "id": "operations",
+      "name_ar": "Operations",
+      "name_en": "Operations",
+      "sections": [],
+      "section_years": {}
+    }
+  ]
+}

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>الإدارات والأقسام - الهيئة العامة للقوى العاملة</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="/static/translations.js"></script>
+  <style>
+    .admin-main{padding:18px;overflow:auto;min-width:0;display:flex;flex-direction:column;height:100vh;box-sizing:border-box}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+    .page-header h2{font-size:17px;font-weight:800;color:var(--primary,#1e3a5f);margin:0}
+    /* Split Panel Layout */
+    .split-panel{display:grid;grid-template-columns:320px 1fr;gap:16px;flex:1;min-height:0}
+    /* Left: Department List */
+    .dept-panel{background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.07)}
+    .dept-panel-head{padding:14px 16px;border-bottom:1px solid var(--border,#e5e7eb);background:linear-gradient(135deg,#1e3a5f,#2d5282)}
+    .dept-panel-head h3{color:#fff;font-size:14px;font-weight:800;margin:0 0 10px}
+    .add-dept-bar{display:flex;gap:8px}
+    .add-dept-bar input{flex:1;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.15);color:#fff;font-family:inherit;font-size:13px}
+    .add-dept-bar input::placeholder{color:rgba(255,255,255,.5)}
+    .btn-add-dept{border:none;background:#c9a84c;color:#1e3a5f;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;white-space:nowrap}
+    .dept-list{flex:1;overflow-y:auto;padding:8px}
+    .dept-item{padding:12px 14px;border-radius:10px;cursor:pointer;margin-bottom:4px;transition:all .15s;border:2px solid transparent;display:flex;flex-direction:column;gap:4px}
+    .dept-item:hover{background:rgba(30,58,95,.05)}
+    .dept-item.active{background:rgba(201,168,76,.12);border-color:rgba(201,168,76,.4)}
+    .dept-item-top{display:flex;align-items:center;justify-content:space-between}
+    .dept-item-name{font-weight:700;font-size:14px;color:var(--text,#1f2937)}
+    .dept-item.active .dept-item-name{color:#8a6d20}
+    .dept-item-arrow{font-size:12px;color:var(--muted,#6b7280);transition:transform .15s}
+    .dept-item.active .dept-item-arrow{transform:rotate(90deg);color:#c9a84c}
+    .dept-item-meta{font-size:12px;color:var(--muted,#6b7280)}
+    .dept-item-icon{font-size:20px;margin-left:8px}
+    .dept-empty{padding:30px;text-align:center;color:var(--muted,#6b7280);font-size:13px}
+    /* Right: Sections Panel */
+    .sect-panel{background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.07)}
+    .sect-panel-head{padding:14px 16px;border-bottom:1px solid var(--border,#e5e7eb);background:var(--bg,#f4f6fb)}
+    .sect-head-info{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .sect-head-icon{font-size:28px}
+    .sect-head-name{font-size:16px;font-weight:800;color:var(--primary,#1e3a5f)}
+    .sect-head-name-en{font-size:13px;color:var(--muted,#6b7280)}
+    .sect-head-actions{display:flex;gap:6px;margin-right:auto}
+    .btn-edit-dept{border:1px solid var(--border,#e5e7eb);background:transparent;color:var(--text,#1f2937);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+    .btn-del-dept{border:1px solid #fecaca;background:#fff5f5;color:#dc2626;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+    .add-sect-row{display:flex;gap:8px;flex-wrap:wrap}
+    .add-sect-row input{flex:1;min-width:130px;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px 10px;background:var(--card,#fff);color:var(--text,#1f2937);font-family:inherit;font-size:13px}
+    .btn-add-sect{border:none;background:#1e3a5f;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;white-space:nowrap}
+    .sect-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:16px;overflow-y:auto;flex:1}
+    .sect-card{background:var(--bg,#f4f6fb);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:14px;transition:all .2s}
+    .sect-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-2px)}
+    .sect-card-icon{font-size:26px;margin-bottom:8px}
+    .sect-card-name{font-weight:700;font-size:14px;color:var(--text,#1f2937);margin-bottom:2px}
+    .sect-card-name-en{font-size:12px;color:var(--muted,#6b7280);margin-bottom:8px}
+    .sect-card-count{font-size:12px;color:var(--primary,#1e3a5f);font-weight:700;margin-bottom:10px}
+    .sect-card-actions{display:flex;gap:6px}
+    .btn-edit-sect{flex:1;border:1px solid var(--border,#e5e7eb);background:transparent;color:var(--text,#1f2937);padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+    .btn-del-sect{border:1px solid #fecaca;background:#fff5f5;color:#dc2626;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+    .sect-empty{padding:48px;text-align:center;color:var(--muted,#6b7280)}
+    .select-hint{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--muted,#6b7280);font-size:14px}
+    .select-hint .hint-icon{font-size:52px;opacity:.5}
+    /* Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:2000}
+    .modal-overlay.show{display:flex}
+    .modal-box{background:var(--card,#fff);border-radius:14px;padding:24px;width:min(420px,90vw);box-shadow:0 16px 48px rgba(0,0,0,.2)}
+    .modal-title{font-size:16px;font-weight:800;color:var(--primary,#1e3a5f);margin-bottom:16px}
+    .form-group{margin-bottom:12px}
+    .form-group label{display:block;font-size:13px;font-weight:700;color:var(--text,#1f2937);margin-bottom:4px}
+    .form-group input,.form-group select{width:100%;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:9px 12px;font-family:inherit;font-size:14px;background:var(--card,#fff);color:var(--text,#1f2937)}
+    .form-group input:focus,.form-group select:focus{outline:2px solid #c9a84c;border-color:transparent}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+    .btn-cancel{border:1px solid var(--border,#e5e7eb);background:transparent;color:var(--text,#1f2937);padding:9px 18px;border-radius:8px;cursor:pointer;font-family:inherit}
+    .btn-save{border:none;background:#1e3a5f;color:#fff;padding:9px 18px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700}
+    .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:3000;font-size:14px}
+    .toast.err{background:#ef4444}
+    /* Icon picker */
+    .icon-picker{display:flex;flex-wrap:wrap;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px}
+    .icon-btn{font-size:22px;width:36px;height:36px;border:2px solid transparent;border-radius:6px;cursor:pointer;background:transparent;display:flex;align-items:center;justify-content:center}
+    .icon-btn:hover{background:rgba(30,58,95,.08)}
+    .icon-btn.selected{border-color:#c9a84c;background:rgba(201,168,76,.15)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+    .dept-item{animation:fadeUp .25s ease both}
+    .sect-card{animation:fadeUp .25s ease both}
+    @media(max-width:900px){.split-panel{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+{% set active_page = 'departments' %}
+<div class="admin-layout">
+  {% include 'admin_sidebar.html' %}
+  <main class="admin-main">
+    <div class="page-header">
+      <h2>🏢 الإدارات والأقسام</h2>
+      <div style="font-size:13px;color:var(--muted,#6b7280)">إدارة الهيكل التنظيمي</div>
+    </div>
+
+    <div class="split-panel">
+      <!-- Left: Departments -->
+      <div class="dept-panel">
+        <div class="dept-panel-head">
+          <h3>🏢 الإدارات</h3>
+          <div class="add-dept-bar">
+            <input id="newDeptInput" placeholder="اسم الإدارة بالعربي..." onkeydown="if(event.key==='Enter')openAddDeptModal()">
+            <button class="btn-add-dept" onclick="openAddDeptModal()">+ إضافة</button>
+          </div>
+        </div>
+        <div class="dept-list" id="deptList">
+          <div class="dept-empty">جاري التحميل...</div>
+        </div>
+      </div>
+
+      <!-- Right: Sections -->
+      <div class="sect-panel" id="sectPanel">
+        <div class="select-hint" id="selectHint">
+          <div class="hint-icon">🏢</div>
+          <div style="font-weight:700">اختر إدارة لعرض أقسامها</div>
+          <div style="font-size:12px">انقر على إدارة من القائمة اليسرى</div>
+        </div>
+        <div id="sectContent" style="display:none;flex-direction:column;height:100%">
+          <div class="sect-panel-head">
+            <div class="sect-head-info">
+              <div class="sect-head-icon" id="sectIcon">🏢</div>
+              <div>
+                <div class="sect-head-name" id="sectDeptName"></div>
+                <div class="sect-head-name-en" id="sectDeptNameEn"></div>
+              </div>
+              <div class="sect-head-actions">
+                <button class="btn-edit-dept" onclick="editSelectedDept()">✏️ تعديل</button>
+                <button class="btn-del-dept" onclick="deleteSelectedDept()">🗑️ حذف</button>
+              </div>
+            </div>
+            <div class="add-sect-row">
+              <input id="newSectArInput" placeholder="اسم القسم بالعربي*">
+              <input id="newSectEnInput" placeholder="Section name in English">
+              <button class="btn-add-sect" onclick="addSection()">+ إضافة قسم</button>
+            </div>
+          </div>
+          <div class="sect-grid" id="sectGrid"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Department Modal -->
+<div class="modal-overlay" id="deptModal">
+  <div class="modal-box">
+    <div class="modal-title" id="deptModalTitle">+ إضافة إدارة جديدة</div>
+    <div class="form-group">
+      <label>الاسم بالعربي *</label>
+      <input id="deptArInput" placeholder="مثال: الموارد البشرية">
+    </div>
+    <div class="form-group">
+      <label>الاسم بالإنجليزي *</label>
+      <input id="deptEnInput" placeholder="e.g. Human Resources">
+    </div>
+    <div class="form-group">
+      <label>الأيقونة (اختياري)</label>
+      <div class="icon-picker" id="iconPicker"></div>
+    </div>
+    <input type="hidden" id="editDeptId">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDeptModal()">إلغاء</button>
+      <button class="btn-save" onclick="saveDept()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Section Modal -->
+<div class="modal-overlay" id="sectModal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ تعديل القسم</div>
+    <div class="form-group">
+      <label>الاسم بالعربي *</label>
+      <input id="editSectArInput" placeholder="الاسم بالعربي">
+    </div>
+    <div class="form-group">
+      <label>الاسم بالإنجليزي</label>
+      <input id="editSectEnInput" placeholder="Section name in English">
+    </div>
+    <input type="hidden" id="editSectId">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSectModal()">إلغاء</button>
+      <button class="btn-save" onclick="saveSect()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const ICONS = ['🏢','📁','👥','⚖️','💰','💼','🔧','🖥️','📊','🏗️','📋','🎓','🏥','🚗','🌐','📦','🔐','📞','✈️','🏛️','📝','🤝','💡','🎯'];
+let depts = [];
+let selectedDept = null;
+
+const $ = id => document.getElementById(id);
+function toast(msg, ok = true) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast ' + (ok ? '' : 'err');
+  t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ── Icon Picker ──────────────────────────────────────
+let pickedIcon = '🏢';
+function buildIconPicker(selected) {
+  pickedIcon = selected || '🏢';
+  const p = $('iconPicker');
+  p.innerHTML = ICONS.map(ic => `<button class="icon-btn${ic===pickedIcon?' selected':''}" onclick="pickIcon('${ic}',this)" title="${ic}">${ic}</button>`).join('');
+}
+function pickIcon(ic, btn) {
+  pickedIcon = ic;
+  document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+// ── API helpers ──────────────────────────────────────
+async function loadDepts() {
+  const res = await fetch('/api/departments');
+  const data = await res.json();
+  depts = data.departments || [];
+  renderDeptList();
+  if (selectedDept) {
+    const updated = depts.find(d => d.id === selectedDept.id);
+    if (updated) showSections(updated);
+    else { selectedDept = null; showSelectHint(); }
+  }
+}
+
+function renderDeptList() {
+  const list = $('deptList');
+  if (!depts.length) {
+    list.innerHTML = '<div class="dept-empty">لا توجد إدارات بعد<br>أضف أول إدارة ⬆️</div>';
+    return;
+  }
+  list.innerHTML = '';
+  depts.forEach(d => {
+    const item = document.createElement('div');
+    item.className = 'dept-item' + (selectedDept?.id === d.id ? ' active' : '');
+    item.onclick = () => showSections(d);
+    const sectCount = (d.sections || []).length;
+    item.innerHTML = `
+      <div class="dept-item-top">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="dept-item-icon">${d.icon || '🏢'}</span>
+          <span class="dept-item-name">${escHtml(d.name_ar)}</span>
+        </div>
+        <span class="dept-item-arrow">›</span>
+      </div>
+      <div class="dept-item-meta">${sectCount} قسم${sectCount !== 1 ? '' : ''}</div>`;
+    list.appendChild(item);
+  });
+}
+
+function showSections(dept) {
+  selectedDept = dept;
+  renderDeptList();
+  $('selectHint').style.display = 'none';
+  const sc = $('sectContent');
+  sc.style.display = 'flex';
+  $('sectIcon').textContent = dept.icon || '🏢';
+  $('sectDeptName').textContent = dept.name_ar;
+  $('sectDeptNameEn').textContent = dept.name_en || '';
+  renderSectGrid(dept);
+}
+
+function showSelectHint() {
+  $('selectHint').style.display = 'flex';
+  $('sectContent').style.display = 'none';
+}
+
+function renderSectGrid(dept) {
+  const grid = $('sectGrid');
+  const sects = dept.sections || [];
+  if (!sects.length) {
+    grid.innerHTML = `<div class="sect-empty" style="grid-column:1/-1"><div style="font-size:42px;margin-bottom:10px">📂</div><div>لا توجد أقسام بعد</div><div style="font-size:12px;margin-top:6px">أضف أول قسم ⬆️</div></div>`;
+    return;
+  }
+  grid.innerHTML = '';
+  sects.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'sect-card';
+    card.innerHTML = `
+      <div class="sect-card-icon">${s.icon || '📂'}</div>
+      <div class="sect-card-name">${escHtml(s.name_ar)}</div>
+      <div class="sect-card-name-en">${escHtml(s.name_en || '')}</div>
+      <div class="sect-card-count">📄 ${s.file_count || 0} ملف</div>
+      <div class="sect-card-actions">
+        <button class="btn-edit-sect" onclick="openEditSect('${s.id}','${escHtml(s.name_ar)}','${escHtml(s.name_en||'')}')">✏️ تعديل</button>
+        <button class="btn-del-sect" onclick="deleteSection('${s.id}')">🗑️</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── Add/Edit Department ──────────────────────────────
+function openAddDeptModal() {
+  const prefill = $('newDeptInput').value.trim();
+  $('deptModalTitle').textContent = '+ إضافة إدارة جديدة';
+  $('deptArInput').value = prefill;
+  $('deptEnInput').value = '';
+  $('editDeptId').value = '';
+  buildIconPicker('🏢');
+  $('deptModal').classList.add('show');
+  setTimeout(() => $('deptArInput').focus(), 100);
+}
+
+function editSelectedDept() {
+  if (!selectedDept) return;
+  $('deptModalTitle').textContent = '✏️ تعديل الإدارة';
+  $('deptArInput').value = selectedDept.name_ar;
+  $('deptEnInput').value = selectedDept.name_en || '';
+  $('editDeptId').value = selectedDept.id;
+  buildIconPicker(selectedDept.icon || '🏢');
+  $('deptModal').classList.add('show');
+}
+
+function closeDeptModal() { $('deptModal').classList.remove('show'); }
+
+async function saveDept() {
+  const nameAr = $('deptArInput').value.trim();
+  const nameEn = $('deptEnInput').value.trim();
+  const editId = $('editDeptId').value;
+  if (!nameAr) { toast('الاسم بالعربي مطلوب', false); return; }
+
+  const body = { name_ar: nameAr, name_en: nameEn || nameAr, icon: pickedIcon };
+  let url = '/api/departments', method = 'POST';
+  if (editId) { url = `/api/departments/${editId}`; method = 'PUT'; }
+
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) { toast(data.detail || 'خطأ', false); return; }
+  toast(editId ? 'تم تحديث الإدارة ✅' : 'تمت الإضافة ✅');
+  $('newDeptInput').value = '';
+  closeDeptModal();
+  await loadDepts();
+}
+
+async function deleteSelectedDept() {
+  if (!selectedDept) return;
+  if (!confirm(`حذف إدارة "${selectedDept.name_ar}"؟ سيتم حذف جميع أقسامها.`)) return;
+  const res = await fetch(`/api/departments/${selectedDept.id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) { toast(data.detail || 'خطأ', false); return; }
+  toast('تم الحذف ✅');
+  selectedDept = null;
+  showSelectHint();
+  await loadDepts();
+}
+
+// ── Sections ─────────────────────────────────────────
+async function addSection() {
+  if (!selectedDept) return;
+  const nameAr = $('newSectArInput').value.trim();
+  const nameEn = $('newSectEnInput').value.trim();
+  if (!nameAr) { toast('الاسم بالعربي مطلوب', false); return; }
+
+  const res = await fetch(`/api/departments/${selectedDept.id}/sections`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name_ar: nameAr, name_en: nameEn || nameAr })
+  });
+  const data = await res.json();
+  if (!res.ok) { toast(data.detail || 'خطأ', false); return; }
+  toast('تمت إضافة القسم ✅');
+  $('newSectArInput').value = ''; $('newSectEnInput').value = '';
+  await loadDepts();
+}
+
+function openEditSect(sectId, nameAr, nameEn) {
+  $('editSectArInput').value = nameAr;
+  $('editSectEnInput').value = nameEn;
+  $('editSectId').value = sectId;
+  $('sectModal').classList.add('show');
+  setTimeout(() => $('editSectArInput').focus(), 100);
+}
+
+function closeSectModal() { $('sectModal').classList.remove('show'); }
+
+async function saveSect() {
+  const sectId = $('editSectId').value;
+  const nameAr = $('editSectArInput').value.trim();
+  const nameEn = $('editSectEnInput').value.trim();
+  if (!nameAr) { toast('الاسم بالعربي مطلوب', false); return; }
+  if (!selectedDept) return;
+
+  const res = await fetch(`/api/departments/${selectedDept.id}/sections/${sectId}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name_ar: nameAr, name_en: nameEn || nameAr })
+  });
+  const data = await res.json();
+  if (!res.ok) { toast(data.detail || 'خطأ', false); return; }
+  toast('تم التحديث ✅');
+  closeSectModal();
+  await loadDepts();
+}
+
+async function deleteSection(sectId) {
+  if (!selectedDept) return;
+  if (!confirm('حذف هذا القسم؟')) return;
+  const res = await fetch(`/api/departments/${selectedDept.id}/sections/${sectId}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) { toast(data.detail || 'خطأ', false); return; }
+  toast('تم الحذف ✅');
+  await loadDepts();
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Close modals on backdrop click
+['deptModal','sectModal'].forEach(id => {
+  $(id).addEventListener('click', e => { if (e.target === $(id)) { closeDeptModal(); closeSectModal(); } });
+});
+
+loadDepts();
+</script>
+{% include 'chat_widget.html' %}
+{% include 'chat_panel.html' %}
+</body>
+</html>

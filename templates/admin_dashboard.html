@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>لوحة الإدارة - الهيئة العامة للقوى العاملة</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="/static/translations.js"></script>
+  <style>
+    .admin-main{min-width:0;display:flex;flex-direction:column;overflow:auto}
+    .admin-topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
+    .admin-topbar h2{font-size:17px;font-weight:700;color:var(--primary)}
+    .admin-content{padding:20px;flex:1}
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px}
+    .stat-card .sc-icon{font-size:26px}
+    .stat-card .sc-val{font-size:28px;font-weight:800;color:var(--primary)}
+    .stat-card .sc-lbl{font-size:12px;color:var(--muted)}
+    .stat-card.c-ok{border-right:4px solid #10b981}.stat-card.c-warn{border-right:4px solid #f59e0b}.stat-card.c-err{border-right:4px solid #ef4444}.stat-card.c-info{border-right:4px solid #6366f1}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+    .panel-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+    .panel-card h3{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+    .recent-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px}
+    .recent-item:last-child{border-bottom:none}
+    .recent-item .ri-name{font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ri-badge{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .ri-ready{background:#dcfce7;color:#166534}.ri-proc{background:#fef3c7;color:#92400e}.ri-err{background:#fee2e2;color:#991b1b}
+    .health-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px}
+    .health-val{font-weight:700;color:var(--primary)}
+    .health-ok{color:#10b981}.health-warn{color:#f59e0b}
+    .quick-links{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ql-btn{display:flex;align-items:center;gap:8px;padding:12px;border:1px solid var(--border);background:var(--card);border-radius:10px;text-decoration:none;color:var(--text);font-size:13px;font-weight:600;transition:all .15s}
+    .ql-btn:hover{background:rgba(30,58,95,.06);border-color:var(--primary)}
+    .ql-icon{font-size:20px}
+    .viol-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+    .viol-item:last-child{border-bottom:none}
+    .viol-q{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .refresh-btn{border:1px solid var(--border);background:transparent;color:var(--text);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
+    .refresh-btn:hover{background:rgba(30,58,95,.06)}
+  </style>
+</head>
+<body>
+{% set active_page = 'dashboard' %}
+<div class="admin-layout">
+  {% include 'admin_sidebar.html' %}
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h2>🏠 لوحة الإدارة</h2>
+      <button class="refresh-btn" onclick="loadAll()">🔄 تحديث</button>
+    </div>
+    <div class="admin-content">
+      <!-- Stats Grid -->
+      <div class="stat-grid">
+        <div class="stat-card c-ok"><div class="sc-icon">📚</div><div class="sc-val" id="scReady">-</div><div class="sc-lbl">وثائق مفهرسة</div></div>
+        <div class="stat-card c-warn"><div class="sc-icon">⏳</div><div class="sc-val" id="scProc">-</div><div class="sc-lbl">قيد المعالجة</div></div>
+        <div class="stat-card c-err"><div class="sc-icon">❌</div><div class="sc-val" id="scErr">-</div><div class="sc-lbl">فشل المعالجة</div></div>
+        <div class="stat-card c-info"><div class="sc-icon">🏢</div><div class="sc-val" id="scDepts">-</div><div class="sc-lbl">الإدارات</div></div>
+      </div>
+
+      <div class="two-col">
+        <!-- Recent Uploads -->
+        <div class="panel-card">
+          <h3>📤 آخر الوثائق المرفوعة</h3>
+          <div id="recentFiles">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">جاري التحميل...</div>
+          </div>
+        </div>
+        <!-- Quick Links -->
+        <div class="panel-card">
+          <h3>🔗 روابط سريعة</h3>
+          <div class="quick-links">
+            <a href="/admin/archive" class="ql-btn"><span class="ql-icon">📁</span> إدارة الأرشيف</a>
+            <a href="/admin/departments" class="ql-btn"><span class="ql-icon">🏢</span> الإدارات</a>
+            <a href="/analytics" class="ql-btn"><span class="ql-icon">📊</span> التحليلات</a>
+            <a href="/admin/logs" class="ql-btn"><span class="ql-icon">💬</span> سجل المحادثات</a>
+            <a href="/admin/settings" class="ql-btn"><span class="ql-icon">⚙️</span> الإعدادات</a>
+            <a href="/" class="ql-btn"><span class="ql-icon">👤</span> بوابة المستخدم</a>
+          </div>
+          <!-- System Health -->
+          <h3 style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">🟢 حالة النظام</h3>
+          <div class="health-row"><span>حالة قاعدة البيانات</span><span class="health-val health-ok" id="dbStatus">جاري الفحص...</span></div>
+          <div class="health-row"><span>وثائق في ChromaDB</span><span class="health-val" id="chromaCount">-</span></div>
+          <div class="health-row"><span>نسبة جودة الفهرسة</span><span class="health-val" id="qualityRate">-</span></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Recent Violations -->
+        <div class="panel-card">
+          <h3>⚠️ آخر تنبيهات المحادثات</h3>
+          <div id="recentViol">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">جاري التحميل...</div>
+          </div>
+        </div>
+        <!-- Dept Breakdown -->
+        <div class="panel-card">
+          <h3>📊 توزيع الوثائق حسب الإدارة</h3>
+          <div id="deptBreakdown">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">جاري التحميل...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function loadStats() {
+  try {
+    const j = await (await fetch('/api/chat/stats')).json();
+    $('scReady').textContent = j.ready ?? j.indexed_count ?? '-';
+    $('scProc').textContent = j.processing ?? 0;
+    $('scErr').textContent = j.error ?? 0;
+    $('scDepts').textContent = j.departments_count ?? '-';
+    $('chromaCount').textContent = j.ready ?? '-';
+    const total = (j.ready || 0) + (j.error || 0);
+    $('qualityRate').textContent = total > 0 ? Math.round((j.ready || 0) / total * 100) + '%' : '-';
+    $('dbStatus').textContent = '✅ متصل';
+    $('dbStatus').className = 'health-val health-ok';
+  } catch(e) {
+    $('dbStatus').textContent = '❌ خطأ';
+    $('dbStatus').className = 'health-val health-warn';
+  }
+}
+
+async function loadRecentFiles() {
+  try {
+    const j = await (await fetch('/api/files')).json();
+    const files = (j.files || []).slice(0, 6);
+    const container = $('recentFiles');
+    if (!files.length) { container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد ملفات</div>'; return; }
+    container.innerHTML = files.map(f => {
+      const s = f.status || 'ready';
+      const badge = s === 'ready' ? '<span class="ri-badge ri-ready">✅ مفهرس</span>' : s === 'processing' ? '<span class="ri-badge ri-proc">⏳ معالجة</span>' : '<span class="ri-badge ri-err">❌ فشل</span>';
+      return `<div class="recent-item"><span class="ri-name" title="${f.file_name}">📄 ${f.file_name}</span>${badge}</div>`;
+    }).join('');
+  } catch {}
+}
+
+async function loadDeptBreakdown() {
+  try {
+    const [filesJ, depsJ] = await Promise.all([fetch('/api/files').then(r=>r.json()), fetch('/api/departments').then(r=>r.json())]);
+    const files = (filesJ.files || []).filter(f => (f.status||'ready') === 'ready');
+    const deps = depsJ.departments || [];
+    const container = $('deptBreakdown');
+    if (!deps.length) { container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px">لا توجد إدارات</div>'; return; }
+    const counts = {};
+    files.forEach(f => { counts[f.department_id] = (counts[f.department_id] || 0) + 1; });
+    const max = Math.max(...Object.values(counts), 1);
+    container.innerHTML = deps.map(d => {
+      const n = counts[d.id] || 0;
+      const pct = Math.round(n / max * 100);
+      return `<div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${d.name_ar}</span><span style="font-weight:700;color:var(--primary)">${n}</span></div>
+        <div style="background:var(--border);border-radius:999px;height:6px"><div style="background:#1e3a5f;width:${pct}%;height:100%;border-radius:999px"></div></div>
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+async function loadRecentViol() {
+  try {
+    const j = await (await fetch('/api/chat/logs?limit=5&violations=true')).json();
+    const logs = j.logs || [];
+    const container = $('recentViol');
+    if (!logs.length) { container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد تنبيهات حديثة</div>'; return; }
+    container.innerHTML = logs.map(l => `
+      <div class="viol-item">
+        <div class="viol-q">❓ ${l.question ? String(l.question).slice(0,70) : '-'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${l.timestamp ? new Date(l.timestamp).toLocaleString('ar') : '-'}</div>
+      </div>`).join('');
+  } catch {
+    $('recentViol').innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">لا توجد تنبيهات</div>';
+  }
+}
+
+async function loadAll() { await Promise.all([loadStats(), loadRecentFiles(), loadDeptBreakdown(), loadRecentViol()]); }
+loadAll();
+setInterval(loadStats, 15000);
+</script>
+{% include 'chat_widget.html' %}
+{% include 'chat_panel.html' %}
+</body>
+</html>

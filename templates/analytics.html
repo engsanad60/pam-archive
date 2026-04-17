@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الهيئة العامة للقوى العاملة - نظام الأرشفة الذكي</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--primary:#1e3a5f;--accent:#c9a84c;--border:#e5e7eb;--shadow:0 4px 16px rgba(0,0,0,.08)}
+    body.dark{--bg:#0f172a;--card:#172233;--text:#e5e7eb;--muted:#94a3b8;--border:#2c3d54;--shadow:0 4px 16px rgba(0,0,0,.3)}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:"Cairo",sans-serif}
+    .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    .side{background:linear-gradient(180deg,var(--primary),#294c78);color:#fff;padding:16px}
+    .brand{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.1);padding:10px;border-radius:12px}
+    .brand h1{margin:0;font-size:15px}
+    .nav{display:grid;gap:8px;margin-top:14px}
+    .nav a,.nav button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;padding:9px 12px;border-radius:10px;text-decoration:none;font-family:inherit;cursor:pointer;font-size:14px}
+    .nav a.active{background:rgba(201,168,76,.35);border-color:#c9a84c}
+    .main{padding:18px;overflow:auto}
+    h2{margin:0 0 16px;color:var(--primary);font-size:20px}
+    .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+    .scard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;box-shadow:var(--shadow)}
+    .scard-icon{font-size:28px;margin-bottom:6px}
+    .scard-value{font-size:28px;font-weight:800;color:var(--primary);line-height:1}
+    .scard-label{font-size:13px;color:var(--muted);margin-top:4px}
+    .scard.total .scard-value{color:#c9a84c;font-size:22px}
+    .filter-bar{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;box-shadow:var(--shadow)}
+    .filter-bar label{font-size:13px;color:var(--muted);margin-bottom:2px;display:block}
+    .filter-group{display:flex;flex-direction:column;min-width:140px}
+    .select,.input-f{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:inherit;font-size:14px}
+    .charts-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:24px}
+    .chart-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+    .chart-card h3{margin:0 0 12px;font-size:15px;color:var(--primary)}
+    .chart-wrap{position:relative;height:260px}
+    .section-title{font-size:17px;font-weight:700;color:var(--primary);margin:24px 0 12px;border-bottom:2px solid var(--accent);padding-bottom:6px}
+    .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:20px;overflow:auto;box-shadow:var(--shadow)}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th{background:rgba(30,58,95,.06);color:var(--primary);font-weight:700;padding:12px 14px;text-align:start;position:sticky;top:0;z-index:1}
+    td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(201,168,76,.06)}
+    .badge-type{display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .type-po{background:#dbeafe;color:#1e40af}
+    .type-inv{background:#dcfce7;color:#166534}
+    .type-con{background:#fef3c7;color:#92400e}
+    .type-cir{background:#fce7f3;color:#9d174d}
+    .type-oth{background:#f3f4f6;color:#4b5563}
+    .amt{font-weight:700;color:var(--primary)}
+    .no-data{text-align:center;color:var(--muted);padding:40px;font-size:15px}
+    .chips-filter{display:flex;flex-wrap:wrap;gap:8px}
+    .chip-f{border:1px solid var(--border);background:transparent;padding:6px 14px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text)}
+    .chip-f.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .toast{position:fixed;top:12px;left:12px;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:60;background:#109164}
+    @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand" style="gap:10px;background:rgba(255,255,255,.08)">
+      <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+           alt="PAM" style="height:48px;width:auto;object-fit:contain;flex-shrink:0;filter:brightness(1.2)"
+           onerror="this.onerror=null;this.outerHTML='<div style=\'width:42px;height:42px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:14px;\'>PAM</div>'">
+      <div>
+        <h1 id="systemName" style="margin:0;font-size:13px;line-height:1.3">الهيئة العامة للقوى العاملة</h1>
+        <div style="font-size:11px;color:rgba(255,255,255,.55)">نظام الأرشفة الذكي</div>
+      </div>
+    </div>
+    <div class="nav">
+      <a href="/archive">📁 الأرشيف</a>
+      <a href="/analytics" class="active">📊 التحليلات</a>
+      <a href="/admin">⚙️ لوحة التحكم</a>
+      <a href="/admin/logs">💬 سجلات المحادثات</a>
+      <button type="button" id="themeBtn">🌙 الوضع</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <h2>📊 لوحة التحليلات المالية</h2>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards" id="summaryCards">
+      <div class="scard"><div class="scard-icon">📋</div><div class="scard-value" id="scContracts">-</div><div class="scard-label">إجمالي العقود</div></div>
+      <div class="scard"><div class="scard-icon">🛒</div><div class="scard-value" id="scPOs">-</div><div class="scard-label">أوامر الشراء</div></div>
+      <div class="scard"><div class="scard-icon">🧾</div><div class="scard-value" id="scInvoices">-</div><div class="scard-label">الفواتير</div></div>
+      <div class="scard"><div class="scard-icon">📢</div><div class="scard-value" id="scCirculars">-</div><div class="scard-label">التعاميم</div></div>
+      <div class="scard total"><div class="scard-icon">💰</div><div class="scard-value" id="scTotal">-</div><div class="scard-label">إجمالي المبالغ (KWD)</div></div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>السنة</label>
+        <select id="filterYear" class="select">
+          <option value="">الكل</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>نوع المستند</label>
+        <div class="chips-filter" id="typeChips">
+          <button class="chip-f active" data-type="">الكل</button>
+          <button class="chip-f" data-type="purchase_order">🛒 أوامر شراء</button>
+          <button class="chip-f" data-type="invoice">🧾 فواتير</button>
+          <button class="chip-f" data-type="contract">📋 عقود</button>
+          <button class="chip-f" data-type="circular">📢 تعاميم</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>بحث (مورد / طرف)</label>
+        <input id="filterVendor" class="input-f" type="text" placeholder="اكتب اسم المورد...">
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>الإنفاق الشهري حسب النوع</h3>
+        <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>توزيع المبالغ حسب المورد</h3>
+        <div class="chart-wrap"><canvas id="chartPie"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>قيمة العقود عبر الزمن</h3>
+        <div class="chart-wrap"><canvas id="chartLine"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Purchase Orders Table -->
+    <div id="poSection">
+      <div class="section-title">🛒 جدول أوامر الشراء</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>رقم الأمر</th><th>التاريخ</th><th>المورد</th><th>الوصف</th>
+            <th>المبلغ KWD</th><th>مركز التكلفة</th><th>الإدارة</th><th>السنة</th>
+          </tr></thead>
+          <tbody id="poTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Invoices Table -->
+    <div id="invSection">
+      <div class="section-title">🧾 جدول الفواتير</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>رقم الفاتورة</th><th>التاريخ</th><th>العميل</th><th>المورد</th>
+            <th>المبلغ KWD</th><th>العقد المرجعي</th><th>السنة</th>
+          </tr></thead>
+          <tbody id="invTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Contracts Table -->
+    <div id="conSection">
+      <div class="section-title">📋 جدول العقود</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>العقد</th><th>الطرف الأول</th><th>الطرف الثاني</th>
+            <th>البداية</th><th>النهاية</th><th>القيمة KWD</th><th>المدة</th>
+          </tr></thead>
+          <tbody id="conTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Circulars Table -->
+    <div id="cirSection">
+      <div class="section-title">📢 جدول التعاميم والقرارات</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>رقم التعميم</th><th>السنة</th><th>الجهة المُصدِرة</th><th>الموضوع</th><th>الإدارة</th>
+          </tr></thead>
+          <tbody id="cirTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+let analyticsData = null;
+let activeType = '';
+let activeYear = '';
+let activeVendor = '';
+let chartBar = null, chartPie = null, chartLine = null;
+
+function fmt(n) {
+  if (n == null || n === '') return '-';
+  const num = parseFloat(n);
+  if (isNaN(num)) return String(n);
+  return num.toLocaleString('ar-KW', {minimumFractionDigits: 0, maximumFractionDigits: 3});
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadData() {
+  try {
+    const r = await fetch('/api/analytics');
+    analyticsData = await r.json();
+    renderAll();
+  } catch(e) {
+    document.querySelector('.main').insertAdjacentHTML('afterbegin',
+      '<div class="no-data">تعذر تحميل بيانات التحليلات. تأكد من تشغيل الخادم.</div>');
+  }
+}
+
+function renderAll() {
+  renderSummary();
+  populateYearFilter();
+  renderTables();
+  renderCharts();
+}
+
+function renderSummary() {
+  const s = analyticsData.summary || {};
+  document.getElementById('scContracts').textContent = s.contracts || 0;
+  document.getElementById('scPOs').textContent = s.purchase_orders || 0;
+  document.getElementById('scInvoices').textContent = s.invoices || 0;
+  document.getElementById('scCirculars').textContent = s.circulars || 0;
+  document.getElementById('scTotal').textContent = fmt(s.total_amount) + ' KWD';
+}
+
+function populateYearFilter() {
+  const years = new Set();
+  [...(analyticsData.purchase_orders||[]),
+   ...(analyticsData.invoices||[]),
+   ...(analyticsData.contracts||[]),
+   ...(analyticsData.circulars||[])].forEach(f => { if(f.year) years.add(f.year); });
+  const sel = document.getElementById('filterYear');
+  sel.innerHTML = '<option value="">الكل</option>';
+  [...years].sort().reverse().forEach(y => {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y;
+    sel.appendChild(o);
+  });
+}
+
+function matchesFilters(item, vendorFields) {
+  if (activeYear && String(item.year) !== String(activeYear)) return false;
+  if (activeVendor) {
+    const v = activeVendor.toLowerCase();
+    const matches = vendorFields.some(f => (item[f]||'').toLowerCase().includes(v));
+    if (!matches) return false;
+  }
+  return true;
+}
+
+function renderTables() {
+  const d = analyticsData;
+
+  // POs
+  const poSection = document.getElementById('poSection');
+  const pos = (d.purchase_orders||[]).filter(x => {
+    if (activeType && activeType !== 'purchase_order') return false;
+    return matchesFilters(x, ['vendor_name','description','department']);
+  });
+  poSection.style.display = (activeType && activeType !== 'purchase_order') ? 'none' : '';
+  const poTb = document.getElementById('poTable');
+  poTb.innerHTML = pos.length ? pos.map(x => `
+    <tr>
+      <td><strong>${escHtml(x.po_number||'-')}</strong></td>
+      <td>${escHtml(x.date||'-')}</td>
+      <td>${escHtml(x.vendor_name||'-')}</td>
+      <td>${escHtml(x.description||'-')}</td>
+      <td class="amt">${fmt(x.total_amount)} <small>${escHtml(x.currency||'KWD')}</small></td>
+      <td>${escHtml(x.cost_center||'-')}</td>
+      <td>${escHtml(x.department||'-')}</td>
+      <td>${escHtml(x.year||'-')}</td>
+    </tr>`).join('') : '<tr><td colspan="8" class="no-data">لا توجد بيانات</td></tr>';
+
+  // Invoices
+  const invSection = document.getElementById('invSection');
+  const invs = (d.invoices||[]).filter(x => {
+    if (activeType && activeType !== 'invoice') return false;
+    return matchesFilters(x, ['vendor_name','customer_name','department']);
+  });
+  invSection.style.display = (activeType && activeType !== 'invoice') ? 'none' : '';
+  const invTb = document.getElementById('invTable');
+  invTb.innerHTML = invs.length ? invs.map(x => `
+    <tr>
+      <td><strong>${escHtml(x.invoice_number||'-')}</strong></td>
+      <td>${escHtml(x.date||'-')}</td>
+      <td>${escHtml(x.customer_name||'-')}</td>
+      <td>${escHtml(x.vendor_name||'-')}</td>
+      <td class="amt">${fmt(x.total_amount)} <small>${escHtml(x.currency||'KWD')}</small></td>
+      <td>${escHtml(x.contract_reference||'-')}</td>
+      <td>${escHtml(x.year||'-')}</td>
+    </tr>`).join('') : '<tr><td colspan="7" class="no-data">لا توجد بيانات</td></tr>';
+
+  // Contracts
+  const conSection = document.getElementById('conSection');
+  const cons = (d.contracts||[]).filter(x => {
+    if (activeType && activeType !== 'contract') return false;
+    return matchesFilters(x, ['party_one','party_two','contract_title','department']);
+  });
+  conSection.style.display = (activeType && activeType !== 'contract') ? 'none' : '';
+  const conTb = document.getElementById('conTable');
+  conTb.innerHTML = cons.length ? cons.map(x => `
+    <tr>
+      <td><strong>${escHtml(x.contract_title||'-')}</strong></td>
+      <td>${escHtml(x.party_one||'-')}</td>
+      <td>${escHtml(x.party_two||'-')}</td>
+      <td>${escHtml(x.start_date||'-')}</td>
+      <td>${escHtml(x.end_date||'-')}</td>
+      <td class="amt">${fmt(x.total_value)} <small>${escHtml(x.currency||'KWD')}</small></td>
+      <td>${escHtml(x.duration_months ? x.duration_months + ' شهر' : '-')}</td>
+    </tr>`).join('') : '<tr><td colspan="7" class="no-data">لا توجد بيانات</td></tr>';
+
+  // Circulars
+  const cirSection = document.getElementById('cirSection');
+  const cirs = (d.circulars||[]).filter(x => {
+    if (activeType && activeType !== 'circular') return false;
+    return matchesFilters(x, ['issuing_authority','subject','department']);
+  });
+  cirSection.style.display = (activeType && activeType !== 'circular') ? 'none' : '';
+  const cirTb = document.getElementById('cirTable');
+  cirTb.innerHTML = cirs.length ? cirs.map(x => `
+    <tr>
+      <td><strong>${escHtml(x.circular_number||'-')}</strong></td>
+      <td>${escHtml(x.year||'-')}</td>
+      <td>${escHtml(x.issuing_authority||'-')}</td>
+      <td>${escHtml(x.subject||'-')}</td>
+      <td>${escHtml(x.department||'-')}</td>
+    </tr>`).join('') : '<tr><td colspan="5" class="no-data">لا توجد بيانات</td></tr>';
+}
+
+function renderCharts() {
+  const d = analyticsData;
+  const isDark = document.body.classList.contains('dark');
+  const textColor = isDark ? '#94a3b8' : '#6b7280';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+  // Bar chart: monthly spending
+  const monthly = d.monthly || {};
+  const allYears = Object.keys(monthly).sort();
+  const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const monthLabels = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const barColors = ['#1e3a5f','#c9a84c','#10b981','#f59e0b','#6366f1'];
+  const barDatasets = allYears.slice(-3).map((yr, i) => ({
+    label: yr,
+    data: months.map(m => monthly[yr]?.[m] || 0),
+    backgroundColor: barColors[i % barColors.length],
+    borderRadius: 4,
+  }));
+
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('chartBar'), {
+    type: 'bar',
+    data: { labels: monthLabels, datasets: barDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: textColor, font: { family: 'Cairo' } } } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+
+  // Pie chart: by vendor
+  const byVendor = d.by_vendor || {};
+  const vendors = Object.keys(byVendor).slice(0, 8);
+  const pieColors = ['#1e3a5f','#c9a84c','#10b981','#f59e0b','#6366f1','#ef4444','#8b5cf6','#06b6d4'];
+  if (chartPie) chartPie.destroy();
+  chartPie = new Chart(document.getElementById('chartPie'), {
+    type: 'doughnut',
+    data: {
+      labels: vendors.length ? vendors : ['لا توجد بيانات'],
+      datasets: [{
+        data: vendors.length ? vendors.map(v => byVendor[v]) : [1],
+        backgroundColor: pieColors,
+        borderWidth: 2,
+        borderColor: isDark ? '#172233' : '#fff',
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: textColor, font: { family: 'Cairo' }, padding: 12 } }
+      }
+    }
+  });
+
+  // Line chart: contracts over time
+  const contracts = d.contracts || [];
+  const ctYears = [...new Set(contracts.map(c => c.year || '').filter(Boolean))].sort();
+  const ctAmounts = ctYears.map(yr =>
+    contracts.filter(c => c.year === yr).reduce((s, c) => s + (parseFloat(c.total_value)||0), 0)
+  );
+  if (chartLine) chartLine.destroy();
+  chartLine = new Chart(document.getElementById('chartLine'), {
+    type: 'line',
+    data: {
+      labels: ctYears.length ? ctYears : ['لا يوجد'],
+      datasets: [{
+        label: 'قيمة العقود (KWD)',
+        data: ctAmounts.length ? ctAmounts : [0],
+        borderColor: '#c9a84c',
+        backgroundColor: 'rgba(201,168,76,.15)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#1e3a5f',
+        pointRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: textColor, font: { family: 'Cairo' } } } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+// Filters
+document.getElementById('filterYear').addEventListener('change', e => {
+  activeYear = e.target.value; renderTables();
+});
+document.getElementById('filterVendor').addEventListener('input', e => {
+  activeVendor = e.target.value.trim(); renderTables();
+});
+document.querySelectorAll('#typeChips .chip-f').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#typeChips .chip-f').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeType = btn.dataset.type;
+    renderTables();
+  });
+});
+
+document.getElementById('themeBtn').onclick = () => {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+  if (analyticsData) renderCharts();
+};
+if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+
+fetch('/api/config').then(r=>r.json()).then(c => {
+  const lang = localStorage.getItem('lang') || 'ar';
+  document.getElementById('systemName').textContent = lang === 'ar' ? c.system_name_ar : c.system_name_en;
+});
+
+loadData();
+</script>
+{% include 'chat_widget.html' %}
+</body>
+</html>

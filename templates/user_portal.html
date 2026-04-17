@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>الهيئة العامة للقوى العاملة - نظام الأرشفة الذكي</title>
+  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="/static/translations.js"></script>
+  <style>
+    :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--primary:#1e3a5f;--accent:#c9a84c;--border:#e5e7eb;--shadow:0 4px 18px rgba(0,0,0,.08)}
+    body.dark{--bg:#0f172a;--card:#172233;--text:#e5e7eb;--muted:#94a3b8;--border:#2c3d54;--shadow:0 4px 18px rgba(0,0,0,.3)}
+    *{box-sizing:border-box;margin:0;padding:0} body{font-family:"Cairo",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    /* Sidebar */
+    .sidebar{background:linear-gradient(180deg,#1e3a5f 0%,#294c78 100%);color:#fff;padding:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+    .sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+    .brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+    .brand-logo svg{flex-shrink:0}
+    .brand-name{font-size:15px;font-weight:800;line-height:1.3}
+    .brand-tagline{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+    .sidebar-nav{flex:1;padding:12px 10px}
+    .nav-section-label{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;padding:12px 8px 6px;font-weight:700}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;color:rgba(255,255,255,.85);text-decoration:none;transition:all .15s;border:1px solid transparent;margin-bottom:2px}
+    .nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+    .nav-item.active{background:rgba(201,168,76,.2);border-color:rgba(201,168,76,.4);color:#c9a84c;font-weight:700}
+    .nav-item .icon{width:20px;text-align:center;font-size:16px}
+    .sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.1)}
+    .sidebar-footer-btns{display:flex;gap:8px}
+    .sidebar-footer-btns button,.sidebar-footer-btns a{flex:1;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);padding:8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;text-align:center;text-decoration:none}
+    .admin-link{display:block;text-align:center;font-size:12px;color:rgba(255,255,255,.45);text-decoration:none;margin-top:10px;padding:6px;border-radius:6px;transition:color .2s}
+    .admin-link:hover{color:rgba(255,255,255,.8)}
+    /* Main */
+    .main{min-width:0;display:flex;flex-direction:column}
+    .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow)}
+    .topbar-title{font-size:17px;font-weight:700;color:var(--primary);flex-shrink:0}
+    .search-wrap{flex:1;max-width:440px;position:relative}
+    .search-wrap input{width:100%;padding:9px 14px 9px 36px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-family:inherit;font-size:14px}
+    .search-icon{position:absolute;top:50%;left:12px;transform:translateY(-50%);color:var(--muted);font-size:14px}
+    .content{flex:1;padding:20px;overflow-auto}
+    /* Hero */
+    .hero{background:linear-gradient(135deg,#1e3a5f 0%,#294c78 60%,#c9a84c 100%);border-radius:16px;padding:28px 32px;color:#fff;margin-bottom:20px;position:relative;overflow:hidden}
+    .hero::after{content:"📚";position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:72px;opacity:.15}
+    .hero h2{font-size:22px;font-weight:800;margin-bottom:6px}
+    .hero p{font-size:14px;opacity:.85;max-width:480px}
+    /* Stats */
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);text-align:center}
+    .stat-card .stat-val{font-size:26px;font-weight:800;color:var(--primary)}
+    .stat-card .stat-lbl{font-size:12px;color:var(--muted);margin-top:3px}
+    /* Filters */
+    .filters-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}
+    .filter-chip{border:1px solid var(--border);background:transparent;color:var(--text);padding:6px 14px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:13px}
+    .filter-chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .section-head{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:12px}
+    /* Doc Grid */
+    .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+    .doc-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow)}
+    .doc-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.12);border-color:var(--accent)}
+    .doc-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+    .doc-card-name{font-weight:700;font-size:14px;line-height:1.4;flex:1}
+    .doc-type-badge{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;flex-shrink:0}
+    .type-purchase_order{background:#dbeafe;color:#1e40af}
+    .type-invoice{background:#dcfce7;color:#166534}
+    .type-contract{background:#fef3c7;color:#92400e}
+    .type-circular{background:#fce7f3;color:#9d174d}
+    .type-other,.type-{background:#f3f4f6;color:#4b5563}
+    .doc-card-meta{font-size:12px;color:var(--muted);line-height:1.8}
+    .doc-card-dept{display:inline-flex;align-items:center;gap:4px;background:rgba(30,58,95,.08);color:var(--primary);padding:2px 8px;border-radius:999px;font-size:11px;margin-top:6px}
+    .doc-card-fin{font-size:12px;font-weight:700;color:var(--primary);margin-top:6px;padding:5px 8px;background:rgba(201,168,76,.1);border-radius:6px}
+    .doc-card-actions{display:flex;gap:6px;margin-top:10px}
+    .btn-view-doc{flex:1;border:none;background:#1e3a5f;color:#fff;padding:7px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit}
+    .btn-dl-doc{flex:0;border:1px solid var(--border);background:transparent;color:var(--text);padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12px}
+    .empty-state{text-align:center;color:var(--muted);padding:60px 20px;grid-column:1/-1}
+    .empty-state .icon{font-size:48px;margin-bottom:12px}
+    /* Views */
+    .view-section{display:none} .view-section.active{display:block}
+    /* About */
+    .about-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:600px;box-shadow:var(--shadow)}
+    .about-card h3{color:var(--primary);margin-bottom:12px}
+    .about-card p{color:var(--muted);line-height:1.8;margin-bottom:10px;font-size:14px}
+    /* Chat History */
+    .history-list{display:flex;flex-direction:column;gap:10px}
+    .history-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all .15s}
+    .history-item:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+    .history-q{font-weight:700;font-size:14px;color:var(--primary);margin-bottom:6px}
+    .history-a{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .history-time{font-size:11px;color:var(--muted);margin-top:6px}
+    .history-empty{text-align:center;color:var(--muted);padding:48px 20px}
+    /* Splash Screen */
+    #splash{position:fixed;inset:0;background:linear-gradient(135deg,#1a2f4e 0%,#2d5282 100%);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s}
+    #splash.hide{opacity:0;pointer-events:none}
+    .splash-logo{display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+    .splash-name{color:#fff;font-size:22px;font-weight:800;text-align:center}
+    .splash-sub{color:rgba(255,255,255,.6);font-size:14px;text-align:center}
+    .splash-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#c9a84c;border-radius:50%;animation:spin .7s linear infinite;margin-top:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    /* Page load animation */
+    @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+    .layout{animation:fadeUp .4s ease both}
+    /* PDF Modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:2000;padding:12px}
+    .modal.show{display:flex}
+    .pdf-modal-box{width:min(900px,96vw);height:90vh;background:var(--card);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+    .pdf-modal-head{padding:10px 16px;background:#1e3a5f;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+    .pdf-modal-head h3{margin:0;font-size:15px}
+    .pdf-iframe{flex:1;border:none;width:100%;background:#525659}
+    .toast{position:fixed;top:14px;right:14px;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:3000;font-size:14px}
+    .toast.ok{background:#10b981} .toast.err{background:#ef4444}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{display:none}}
+  </style>
+</head>
+<body>
+
+<!-- Splash Screen -->
+<div id="splash">
+  <div class="splash-logo">
+    <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+         alt="الهيئة العامة للقوى العاملة"
+         style="height:120px;width:auto;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))"
+         onerror="this.onerror=null;this.outerHTML='<div style=\'width:100px;height:100px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:28px;\'>PAM</div>'">
+  </div>
+  <div class="splash-name">الهيئة العامة للقوى العاملة</div>
+  <div class="splash-sub">نظام الأرشفة والمساعد الذكي</div>
+  <div class="splash-spinner"></div>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+             alt="الهيئة العامة للقوى العاملة"
+             style="height:56px;width:auto;object-fit:contain;flex-shrink:0;filter:brightness(1.1)"
+             onerror="this.onerror=null;this.outerHTML='<div style=\'width:48px;height:48px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:16px;\'>PAM</div>'">
+        <div><div class="brand-name" id="systemName">الهيئة العامة للقوى العاملة</div><div class="brand-tagline">نظام الأرشفة والمساعد الذكي</div></div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">
+        <button data-lang-toggle onclick="LangManager.toggle()" style="float:left;background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);padding:2px 8px;border-radius:12px;cursor:pointer;font-family:inherit;font-size:11px;margin-top:-2px">EN</button>
+        القائمة
+      </div>
+      <a class="nav-item active" id="navDocs" onclick="showView('docs')" href="#"><span class="icon">📚</span> <span data-i18n="nav_documents">الوثائق المتاحة</span></a>
+      <a class="nav-item" id="navSearch" onclick="showView('search')" href="#"><span class="icon">🔍</span> <span data-i18n="nav_search">البحث</span></a>
+      <a class="nav-item" id="navAnalytics" onclick="showView('analytics')" href="#"><span class="icon">📊</span> <span data-i18n="nav_reports">التقارير والإحصاءات</span></a>
+      <a class="nav-item" id="navHistory" onclick="showView('history')" href="#"><span class="icon">📜</span> <span data-i18n="nav_history">محادثاتي السابقة</span></a>
+      <a class="nav-item" id="navAbout" onclick="showView('about')" href="#"><span class="icon">ℹ️</span> <span data-i18n="nav_about">عن النظام</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-btns">
+        <button id="themeBtn">🌙 الوضع</button>
+        <button id="langBtn">EN</button>
+      </div>
+      <a href="/admin" class="admin-link">⚙️ لوحة الإدارة</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbarTitle">الوثائق المتاحة</span>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="searchInput" type="search" placeholder="ابحث في الوثائق...">
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Documents View: Chat Results + Hero -->
+      <div id="viewDocs" class="view-section active">
+        <!-- Hero -->
+        <div id="heroSection" class="hero">
+          <h2 data-i18n="welcome_title">مرحباً بك في نظام الأرشفة الذكي</h2>
+          <p data-i18n="welcome_desc">يمكنك البحث في الوثائق والقرارات واللوائح المؤسسية باستخدام المساعد الذكي المدعوم بالذكاء الاصطناعي</p>
+        </div>
+        <!-- Chat Results Section -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-head" style="margin-bottom:0" data-i18n="docs_title">نتائج بحثك</div>
+          <button id="clearResultsBtn" onclick="clearDocResults()" style="display:none;border:1px solid var(--border);background:transparent;color:var(--muted);padding:5px 12px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:12px" data-i18n="docs_clear">مسح النتائج</button>
+        </div>
+        <div id="chatResultsEmpty" style="text-align:center;color:var(--muted);padding:48px 20px;background:var(--card);border:1px dashed var(--border);border-radius:14px;margin-bottom:20px">
+          <div style="font-size:52px;margin-bottom:12px">🤖</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:6px" data-i18n="docs_empty">ابدأ بسؤال المساعد الذكي للاطلاع على الوثائق ذات الصلة</div>
+          <div style="font-size:13px;margin-top:8px;opacity:.7">استخدم زر 💬 في أسفل الشاشة أو 🤖 على الجانب</div>
+        </div>
+        <div class="doc-grid" id="chatResultsGrid" style="display:none"></div>
+      </div>
+
+      <!-- Search View -->
+      <div id="viewSearch" class="view-section">
+        <div class="section-head">نتائج البحث</div>
+        <div class="doc-grid" id="searchGrid"></div>
+      </div>
+
+      <!-- Analytics View (read-only) -->
+      <div id="viewAnalytics" class="view-section">
+        <div class="section-head">📊 الإحصاءات والتقارير</div>
+        <div class="stats-row" id="analyticsStats"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px">
+          <div class="about-card" id="deptBreakCard">
+            <h3 style="margin-bottom:12px">📁 توزيع الوثائق حسب الإدارة</h3>
+            <div id="deptBreakList"></div>
+          </div>
+          <div class="about-card" id="docTypeCard">
+            <h3 style="margin-bottom:12px">📑 توزيع حسب نوع الوثيقة</h3>
+            <div id="docTypeList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat History View -->
+      <div id="viewHistory" class="view-section">
+        <div class="section-head" data-i18n="chat_history_title">📜 محادثاتي السابقة</div>
+        <div id="chatHistoryList"></div>
+      </div>
+
+      <!-- About View -->
+      <div id="viewAbout" class="view-section">
+        <div class="about-card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <div style="flex-shrink:0">
+              <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+                   alt="الهيئة العامة للقوى العاملة"
+                   style="height:60px;width:auto;object-fit:contain"
+                   onerror="this.onerror=null;this.outerHTML='<div style=\'width:52px;height:52px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:14px;\'>PAM</div>'">
+            </div>
+            <div>
+              <h3 style="margin:0">الهيئة العامة للقوى العاملة</h3>
+              <div style="font-size:13px;color:var(--muted)">Public Authority for Manpower - Kuwait</div>
+            </div>
+          </div>
+          <p><strong>نظام الأرشفة الذكي</strong> يوفر إمكانية تصفح وعرض الوثائق الإدارية والمالية المؤرشفة بسهولة، مع مساعد ذكي مدعوم بالذكاء الاصطناعي.</p>
+          <p><strong>المميزات:</strong></p>
+          <p>📚 تصفح الوثائق حسب الإدارة والقسم والسنة<br>
+          🔍 بحث متقدم في محتوى الوثائق<br>
+          🤖 مساعد ذكي بالعربية والإنجليزية<br>
+          📊 تقارير مالية وإحصاءات قراءة فقط<br>
+          👁️ عرض الملفات مباشرة في المتصفح</p>
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)">
+            جميع الحقوق محفوظة © 2026 - الهيئة العامة للقوى العاملة<br>
+            دولة الكويت | State of Kuwait | <a href="https://www.pam.gov.kw" target="_blank" style="color:var(--primary)">www.pam.gov.kw</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Viewer Modal -->
+<div id="pdfModal" class="modal">
+  <div class="pdf-modal-box">
+    <div class="pdf-modal-head">
+      <h3 id="pdfModalTitle">📄 عرض الملف</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a id="pdfDlBtn" href="#" download style="background:#c9a84c;color:#1e3a5f;padding:6px 14px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">⬇️ تحميل</a>
+        <button onclick="closePdfModal()" style="background:transparent;border:none;color:#fff;font-size:22px;cursor:pointer">×</button>
+      </div>
+    </div>
+    <iframe id="pdfFrame" class="pdf-iframe" src="" title="PDF Viewer"></iframe>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let lang = localStorage.getItem('pam_language') || localStorage.getItem('lang') || 'ar';
+let allFiles = [], deps = [];
+let activeView = 'docs', activeDept = '';
+let shownDocIds = new Set(); // track what's already shown in results
+
+function toast(msg, ok=true) {
+  const d = $('toast'); d.textContent = msg;
+  d.className = 'toast ' + (ok ? 'ok' : 'err'); d.style.display = 'block';
+  setTimeout(() => d.style.display = 'none', 2800);
+}
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(n) { if (n == null || n === '') return '-'; const x = parseFloat(n); return isNaN(x) ? String(n) : x.toLocaleString('ar-KW', {minimumFractionDigits:0,maximumFractionDigits:3}); }
+
+function docTypeIcon(dt) { return {purchase_order:'🛒',invoice:'🧾',contract:'📋',circular:'📢',other:'📄'}[dt] || '📄'; }
+function docTypeLabel(dt) { return {purchase_order:'أمر شراء',invoice:'فاتورة',contract:'عقد',circular:'تعميم',other:'أخرى'}[dt] || ''; }
+
+const VIEW_TITLES = { docs: 'الوثائق المتاحة', search: 'البحث في الوثائق', analytics: 'التقارير والإحصاءات', history: 'محادثاتي السابقة', about: 'عن النظام' };
+
+function showView(name) {
+  activeView = name;
+  document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+  const viewEl = $('view' + name.charAt(0).toUpperCase() + name.slice(1));
+  if (viewEl) viewEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navEl = $('nav' + name.charAt(0).toUpperCase() + name.slice(1));
+  if (navEl) navEl.classList.add('active');
+  $('topbarTitle').textContent = VIEW_TITLES[name] || name;
+  if (name === 'search') { $('searchInput').focus(); renderSearchGrid($('searchInput').value); }
+  if (name === 'analytics') renderAnalytics();
+  if (name === 'history') renderHistory();
+}
+
+async function renderAnalytics() {
+  const stats = $('analyticsStats');
+  if (!stats) return;
+  try {
+    const r = await fetch('/api/files');
+    const data = await r.json();
+    const readyFiles = (data.files || []).filter(f => (f.status||'ready') === 'ready');
+    const byDept = {}, byType = {};
+    readyFiles.forEach(f => {
+      const d = f.department_name_ar || 'غير محدد';
+      byDept[d] = (byDept[d] || 0) + 1;
+      const t = f.doc_type || 'other';
+      byType[t] = (byType[t] || 0) + 1;
+    });
+    stats.innerHTML = `
+      <div class="stat-card"><div class="stat-val">${readyFiles.length}</div><div class="stat-lbl" data-i18n="analytics_total_docs">إجمالي الوثائق</div></div>
+      <div class="stat-card"><div class="stat-val">${Object.keys(byDept).length}</div><div class="stat-lbl">الإدارات</div></div>
+      <div class="stat-card"><div class="stat-val">${readyFiles.filter(f=>f.doc_type==='contract').length}</div><div class="stat-lbl" data-i18n="analytics_total_contracts">العقود</div></div>
+      <div class="stat-card"><div class="stat-val">${readyFiles.filter(f=>f.doc_type==='purchase_order').length}</div><div class="stat-lbl" data-i18n="analytics_total_pos">أوامر الشراء</div></div>
+      <div class="stat-card"><div class="stat-val">${readyFiles.filter(f=>f.doc_type==='invoice').length}</div><div class="stat-lbl" data-i18n="analytics_total_invoices">الفواتير</div></div>
+      <div class="stat-card"><div class="stat-val">${readyFiles.filter(f=>f.doc_type==='circular').length}</div><div class="stat-lbl">التعاميم</div></div>`;
+    const deptList = $('deptBreakList');
+    if (deptList) {
+      deptList.innerHTML = Object.entries(byDept).sort((a,b)=>b[1]-a[1]).map(([d,c]) =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span>${escHtml(d)}</span><span style="font-weight:700;color:var(--primary)">${c}</span></div>`).join('');
+    }
+    const typeLabels = {purchase_order: LangManager.get('type_purchase_order'), invoice: LangManager.get('type_invoice'), contract: LangManager.get('type_contract'), circular: LangManager.get('type_circular'), other: LangManager.get('type_other')};
+    const typeList = $('docTypeList');
+    if (typeList) {
+      typeList.innerHTML = Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,c]) =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span>${docTypeIcon(t)} ${escHtml(typeLabels[t]||t)}</span><span style="font-weight:700;color:var(--primary)">${c}</span></div>`).join('');
+    }
+  } catch {}
+}
+
+function renderHistory() {
+  ChatHistory.updateUI();
+}
+
+async function loadData() {
+  try {
+    const [depsRes] = await Promise.all([fetch('/api/departments')]);
+    deps = ((await depsRes.json()).departments || []);
+  } catch {}
+}
+
+// ── Chat Results (relevant documents from chat) ────────────
+function addChatResultDocs(fileIds) {
+  if (!fileIds || !fileIds.length) return;
+  const newIds = fileIds.filter(id => !shownDocIds.has(id));
+  if (!newIds.length) return;
+
+  fetch('/api/files/by-ids?ids=' + newIds.join(','))
+    .then(r => r.json())
+    .then(data => {
+      const files = (data.files || []).filter(f => f.is_public);
+      if (!files.length) return;
+      files.forEach(f => shownDocIds.add(f.id));
+      const grid = $('chatResultsGrid');
+      const emptyState = $('chatResultsEmpty');
+      const clearBtn = $('clearResultsBtn');
+      if (grid) {
+        grid.style.display = 'grid';
+        emptyState.style.display = 'none';
+        clearBtn.style.display = 'inline-block';
+        files.forEach(f => grid.prepend(makeDocCard(f)));
+      }
+    })
+    .catch(() => {});
+}
+
+function clearDocResults() {
+  shownDocIds.clear();
+  const grid = $('chatResultsGrid');
+  const emptyState = $('chatResultsEmpty');
+  const clearBtn = $('clearResultsBtn');
+  if (grid) { grid.innerHTML = ''; grid.style.display = 'none'; }
+  if (emptyState) emptyState.style.display = 'block';
+  if (clearBtn) clearBtn.style.display = 'none';
+}
+
+// Listen for chat events from chat_widget and chat_panel
+document.addEventListener('chatResponseReceived', (e) => {
+  const { fileIds } = e.detail || {};
+  if (fileIds && fileIds.length) addChatResultDocs(fileIds);
+});
+
+// Listen for language changes
+document.addEventListener('languageChanged', (e) => {
+  lang = e.detail.lang;
+});
+
+// Listen for chat history updates
+document.addEventListener('chatHistoryUpdated', () => {
+  if (activeView === 'history') ChatHistory.updateUI();
+});
+
+function buildFinLine(f) {
+  const sd = f.structured_data; const dt = f.doc_type;
+  if (!sd || !dt || dt === 'other' || !dt) return '';
+  let parts = [];
+  if (dt === 'purchase_order' && sd.total_amount != null) parts.push(fmt(sd.total_amount) + ' ' + (sd.currency||'KWD'));
+  else if (dt === 'invoice' && sd.total_amount != null) parts.push(fmt(sd.total_amount) + ' ' + (sd.currency||'KWD'));
+  else if (dt === 'contract' && sd.total_value != null) parts.push(fmt(sd.total_value) + ' ' + (sd.currency||'KWD'));
+  return parts.length ? `<div class="doc-card-fin">💰 ${escHtml(parts[0])}</div>` : '';
+}
+
+function makeDocCard(f) {
+  const dt = f.doc_type || ''; const dep = lang === 'ar' ? f.department_name_ar : f.department_name_en;
+  const dtBadge = dt ? `<span class="doc-type-badge type-${escHtml(dt)}">${docTypeIcon(dt)} ${escHtml(docTypeLabel(dt))}</span>` : '';
+  const finLine = buildFinLine(f);
+  const d = document.createElement('div'); d.className = 'doc-card';
+  d.innerHTML = `
+    <div class="doc-card-header">
+      <div class="doc-card-name">📄 ${escHtml(f.file_name)}</div>
+      ${dtBadge}
+    </div>
+    <div class="doc-card-meta">
+      ${escHtml(dep||'')} | ${escHtml(f.section_name_ar||'')} | ${escHtml(f.year||'')}
+      <br>${f.upload_date ? new Date(f.upload_date).toLocaleDateString('ar') : '-'}
+    </div>
+    ${finLine}
+    ${f.summary ? `<div class="doc-card-meta" style="margin-top:6px">${escHtml(String(f.summary).slice(0,100))}${f.summary.length>100?'...':''}</div>` : ''}
+    <div class="doc-card-actions">
+      <button class="btn-view-doc" data-id="${escHtml(f.id)}" data-name="${escHtml(f.file_name)}">👁️ عرض الملف</button>
+      <a class="btn-dl-doc" href="/files/${escHtml(f.id)}/download" download title="تحميل">⬇️</a>
+    </div>`;
+  d.querySelector('.btn-view-doc').onclick = function() { openPdfModal(this.dataset.id, this.dataset.name); };
+  return d;
+}
+
+function renderDocGrid(files) {
+  const grid = $('docGrid'); grid.innerHTML = '';
+  if (!files.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">📭</div><div>لا توجد وثائق متاحة</div></div>'; return; }
+  files.forEach(f => grid.appendChild(makeDocCard(f)));
+}
+
+function renderSearchGrid(term) {
+  const grid = $('searchGrid'); grid.innerHTML = '';
+  if (!term.trim()) { grid.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><div>اكتب للبحث في الوثائق</div></div>'; return; }
+  const t = term.trim().toLowerCase();
+  const found = allFiles.filter(f =>
+    (f.file_name||'').toLowerCase().includes(t) ||
+    (f.document_type||'').toLowerCase().includes(t) ||
+    (f.main_topic||'').toLowerCase().includes(t) ||
+    (f.summary||'').toLowerCase().includes(t) ||
+    (f.decree_number||'').toLowerCase().includes(t) ||
+    (f.department_name_ar||'').toLowerCase().includes(t)
+  );
+  if (!found.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><div>لا توجد نتائج للبحث عن: ' + escHtml(term) + '</div></div>'; return; }
+  found.forEach(f => grid.appendChild(makeDocCard(f)));
+}
+
+function openPdfModal(fileId, name) {
+  $('pdfModalTitle').textContent = '📄 ' + (name || '');
+  $('pdfFrame').src = '/files/' + encodeURIComponent(fileId) + '/view';
+  $('pdfDlBtn').href = '/files/' + encodeURIComponent(fileId) + '/download';
+  $('pdfDlBtn').download = name || 'file.pdf';
+  $('pdfModal').classList.add('show');
+}
+function closePdfModal() { $('pdfModal').classList.remove('show'); $('pdfFrame').src = ''; }
+$('pdfModal').addEventListener('click', e => { if (e.target === $('pdfModal')) closePdfModal(); });
+
+// Search
+$('searchInput').addEventListener('input', e => {
+  const v = e.target.value.trim();
+  if (activeView !== 'search' && v) showView('search');
+  if (activeView === 'search') renderSearchGrid(v);
+  else if (activeView === 'docs') {
+    const filtered = v ? allFiles.filter(f => (f.file_name||'').toLowerCase().includes(v.toLowerCase()) || (f.decree_number||'').toLowerCase().includes(v.toLowerCase())) : (activeDept ? allFiles.filter(f => f.department_id === activeDept) : allFiles);
+    renderDocGrid(filtered);
+  }
+});
+
+// Theme
+if ($('themeBtn')) $('themeBtn').onclick = () => { document.body.classList.toggle('dark'); localStorage.setItem('theme', document.body.classList.contains('dark')?'dark':'light'); };
+if (localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
+
+// Lang toggle (also handled by LangManager)
+if ($('langBtn')) $('langBtn').onclick = () => LangManager.toggle();
+
+async function loadConfig() {
+  try {
+    const c = await (await fetch('/api/config')).json();
+    if ($('systemName')) $('systemName').textContent = LangManager.current === 'ar' ? c.system_name_ar : c.system_name_en;
+  } catch {}
+}
+
+// Update search placeholders on lang change
+document.addEventListener('languageChanged', (e) => {
+  lang = e.detail.lang;
+  const si = $('searchInput');
+  if (si) si.placeholder = LangManager.get('search_placeholder');
+});
+
+// Splash screen - hide after 1.5s
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const s = $('splash');
+    if (s) { s.classList.add('hide'); setTimeout(() => s.remove(), 400); }
+  }, 1500);
+});
+
+loadConfig(); loadData();
+</script>
+{% include 'chat_widget.html' %}
+{% include 'chat_panel.html' %}
+</body>
+</html>

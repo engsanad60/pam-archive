@@ -1,0 +1,384 @@
+<style>
+  /* ── Chat Widget ── */
+  .cw-fab{position:fixed;left:20px;bottom:20px;width:58px;height:58px;border-radius:50%;border:2px solid #c9a84c;background:#1e3a5f;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1200;box-shadow:0 8px 20px rgba(0,0,0,.25);animation:cwBounce 2.2s infinite}
+  .cw-dot{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%;background:#ef4444}
+  .cw-panel{position:fixed;left:20px;bottom:82px;width:380px;height:560px;background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;display:none;flex-direction:column;z-index:1300;box-shadow:0 18px 32px rgba(0,0,0,.25)}
+  .cw-panel.open{display:flex;animation:cwUp .2s ease}
+  .cw-head{padding:10px 12px;background:#1e3a5f;color:#fff;display:flex;justify-content:space-between;align-items:center;border-radius:14px 14px 0 0;cursor:grab}
+  .cw-title{display:flex;align-items:center;gap:6px;font-size:14px;flex-direction:column;align-items:flex-start}
+  .cw-title-row{display:flex;align-items:center;gap:6px}
+  .cw-online{width:8px;height:8px;border-radius:50%;background:#22c55e}
+  .cw-indexed{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px}
+  .cw-head button{border:none;background:transparent;color:#fff;font-size:18px;cursor:pointer}
+  .cw-body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+  .cw-msg{max-width:85%;padding:9px 11px;border-radius:12px;border:1px solid var(--border,#e5e7eb);white-space:pre-wrap;line-height:1.6}
+  .cw-user{align-self:flex-end;background:#1e3a5f;color:#fff;border-color:transparent}
+  .cw-bot{align-self:flex-start;background:var(--card,#fff);color:var(--text,#1f2937)}
+  .cw-violation{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+  .cw-source{font-size:12px;margin-top:6px;color:#8d6f1f;background:rgba(201,168,76,.15);border:1px solid var(--border,#e5e7eb);padding:3px 8px;border-radius:999px;display:inline-flex}
+  .cw-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .cw-chip{border:1px solid var(--border,#e5e7eb);background:transparent;border-radius:999px;padding:6px 9px;cursor:pointer;font-size:12px}
+  .cw-foot{padding:10px;border-top:1px solid var(--border,#e5e7eb);display:flex;gap:8px}
+  .cw-input{flex:1;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:10px;background:transparent;color:var(--text,#1f2937);font-family:inherit}
+  .cw-send{border:none;background:#1e3a5f;color:#fff;border-radius:10px;padding:10px 12px;cursor:pointer}
+  .cw-typing{display:inline-flex;gap:4px}.cw-typing i{width:6px;height:6px;border-radius:50%;background:#6b7280;animation:cwPulse 1s infinite}.cw-typing i:nth-child(2){animation-delay:.15s}.cw-typing i:nth-child(3){animation-delay:.3s}
+  @keyframes cwPulse{0%,80%,100%{transform:scale(.8)}40%{transform:scale(1)}} @keyframes cwBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}} @keyframes cwUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media(max-width:720px){.cw-panel{left:0;right:0;bottom:0;width:100vw;height:100vh;border-radius:0}.cw-head{border-radius:0}}
+
+  /* ── Notification Bell ── */
+  .notif-bell-wrap{position:fixed;top:14px;left:14px;z-index:1400}
+  .notif-bell{width:44px;height:44px;border-radius:50%;background:#1e3a5f;border:2px solid #c9a84c;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:18px;position:relative}
+  .notif-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff}
+  .notif-dropdown{position:absolute;top:52px;left:0;width:340px;max-height:480px;background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.15);overflow:hidden;display:flex;flex-direction:column;z-index:1500}
+  .notif-header{padding:10px 14px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px}
+  .notif-header button{border:none;background:transparent;color:#1e3a5f;cursor:pointer;font-size:12px;font-family:inherit}
+  .notif-list{flex:1;overflow:auto}
+  .notif-item{padding:10px 14px;border-bottom:1px solid var(--border,#e5e7eb);font-size:13px;line-height:1.6}
+  .notif-item:last-child{border-bottom:none}
+  .notif-item.unread{background:rgba(30,58,95,.04)}
+  .notif-item.success{border-right:3px solid #10b981}
+  .notif-item.warning{border-right:3px solid #f59e0b}
+  .notif-item.error{border-right:3px solid #ef4444}
+  .notif-time{font-size:11px;color:var(--muted,#6b7280);margin-top:4px}
+  .notif-empty{padding:24px;text-align:center;color:var(--muted,#6b7280);font-size:14px}
+  .notif-retry{border:none;background:#ef4444;color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;margin-top:6px;font-family:inherit}
+</style>
+
+<!-- Notification Bell -->
+<div class="notif-bell-wrap">
+  <div class="notif-bell" id="notifBell" title="الإشعارات">
+    🔔
+    <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+  </div>
+  <div class="notif-dropdown" id="notifDropdown" style="display:none">
+    <div class="notif-header">
+      <span>🔔 الإشعارات</span>
+      <div style="display:flex;gap:8px">
+        <button onclick="markAllNotifRead()">تعليم كمقروء</button>
+        <button onclick="clearAllNotif()">مسح الكل</button>
+      </div>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+</div>
+
+<!-- Chat FAB -->
+<button id="cwFab" class="cw-fab" title="Chat Widget">💬<span id="cwDot" class="cw-dot" style="display:none"></span></button>
+
+<!-- Chat Panel -->
+<section id="cwPanel" class="cw-panel">
+  <header id="cwHead" class="cw-head">
+    <div style="display:flex;align-items:center;gap:8px">
+      <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+           alt="PAM" style="height:35px;width:auto;object-fit:contain;filter:brightness(1.2)"
+           onerror="this.onerror=null;this.outerHTML='<div style=\'width:30px;height:30px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:10px;\'>PAM</div>'">
+      <div class="cw-title">
+        <div class="cw-title-row"><span id="cwSystemName">الهيئة العامة للقوى العاملة</span> <span class="cw-online"></span><small id="cwOnlineText">متصل</small></div>
+        <div class="cw-indexed" id="cwIndexedCount">📚 جاري التحميل...</div>
+      </div>
+    </div>
+    <div><button id="cwMin">−</button><button id="cwClose">×</button></div>
+  </header>
+  <div id="cwBody" class="cw-body"></div>
+  <footer class="cw-foot">
+    <input id="cwInput" class="cw-input" placeholder="اكتب سؤالك...">
+    <button id="cwSend" class="cw-send">إرسال</button>
+  </footer>
+</section>
+
+<script>
+(() => {
+  // ── Notification System ─────────────────────────────────────────────
+  const NOTIF_KEY = 'chatbot_notifications_v2';
+  const SEEN_STATUS_KEY = 'chatbot_seen_statuses';
+
+  function getNotifs() {
+    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch { return []; }
+  }
+
+  function saveNotifs(n) {
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(n.slice(0, 60)));
+  }
+
+  function addNotif(notif) {
+    const notifs = getNotifs();
+    notifs.unshift({ ...notif, id: Date.now() + Math.random(), read: false, ts: new Date().toISOString() });
+    saveNotifs(notifs);
+    updateBell();
+    renderNotifList();
+  }
+
+  function updateBell() {
+    const unread = getNotifs().filter(n => !n.read).length;
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+      badge.textContent = unread > 99 ? '99+' : unread;
+      badge.style.display = unread > 0 ? 'flex' : 'none';
+    }
+  }
+
+  function renderNotifList() {
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    const notifs = getNotifs();
+    if (!notifs.length) {
+      list.innerHTML = '<div class="notif-empty">لا توجد إشعارات</div>';
+      return;
+    }
+    list.innerHTML = notifs.map(n => {
+      const cls = n.type || 'success';
+      const time = n.ts ? new Date(n.ts).toLocaleString('ar') : '';
+      let body = '';
+      if (n.type === 'success') {
+        body = `<strong>✅ ${n.title||'تم الرفع بنجاح'}</strong><br>
+          📄 ${n.file||''}<br>
+          🏢 ${n.department||''} | ${n.section||''}<br>
+          ${n.doc_type ? '📑 نوع المستند: ' + docTypeLabel(n.doc_type) + '<br>' : ''}
+          ${n.decree_number ? '🔢 رقم: ' + n.decree_number + '<br>' : ''}
+          ${n.extraction_method === 'claude_vision' ? '🤖 Claude Vision<br>' : n.extraction_method === 'direct' ? '✅ نص مباشر<br>' : ''}
+          ${n.confidence && n.confidence.toLowerCase().includes('unclear') ? '<span style="color:#f59e0b">⚠️ جودة قراءة منخفضة</span><br>' : ''}
+          ${n.summary ? '💬 ' + String(n.summary).slice(0,100) + (n.summary.length > 100 ? '...' : '') : ''}`;
+      } else if (n.type === 'warning') {
+        body = `<strong>⚠️ ${n.title||'جودة قراءة منخفضة'}</strong><br>📄 ${n.file||''}`;
+      } else if (n.type === 'error') {
+        body = `<strong>❌ ${n.title||'فشل المعالجة'}</strong><br>📄 ${n.file||''}<br>
+          <small style="color:#ef4444">${n.error||''}</small><br>
+          ${n.file_id ? `<button class="notif-retry" onclick="retryFile('${n.file_id}')">إعادة المحاولة</button>` : ''}`;
+      }
+      return `<div class="notif-item ${cls} ${n.read?'':'unread'}" data-id="${n.id}">
+        ${body}
+        <div class="notif-time">${time}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function docTypeLabel(dt) {
+    const map = {purchase_order:'أمر شراء 🛒',invoice:'فاتورة 🧾',contract:'عقد 📋',circular:'تعميم 📢',other:'أخرى'};
+    return map[dt] || dt;
+  }
+
+  window.markAllNotifRead = function() {
+    const n = getNotifs().map(x => ({...x, read:true}));
+    saveNotifs(n); updateBell(); renderNotifList();
+  };
+
+  window.clearAllNotif = function() {
+    saveNotifs([]); updateBell(); renderNotifList();
+  };
+
+  window.retryFile = async function(fileId) {
+    try {
+      const r = await fetch('/api/files/' + fileId + '/reprocess', {method:'POST'});
+      const d = await r.json();
+      alert(d.message || 'جاري إعادة المعالجة...');
+    } catch(e) { alert('حدث خطأ'); }
+  };
+
+  const bell = document.getElementById('notifBell');
+  const dropdown = document.getElementById('notifDropdown');
+  if (bell) {
+    bell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.style.display !== 'none';
+      dropdown.style.display = isOpen ? 'none' : 'flex';
+      dropdown.style.flexDirection = 'column';
+      if (!isOpen) { markAllNotifRead(); renderNotifList(); }
+    });
+    document.addEventListener('click', (e) => {
+      if (!bell.parentElement.contains(e.target)) dropdown.style.display = 'none';
+    });
+  }
+  updateBell();
+  renderNotifList();
+
+  // ── File Status Polling ─────────────────────────────────────────────
+  let knownStatuses = {};
+  let seenStatuses = {};
+  try { seenStatuses = JSON.parse(localStorage.getItem(SEEN_STATUS_KEY) || '{}'); } catch {}
+
+  async function pollFileStatuses() {
+    try {
+      const r = await fetch('/api/files/status');
+      if (!r.ok) return;
+      const data = await r.json();
+      const files = data.files || [];
+      let changed = false;
+
+      files.forEach(f => {
+        const prev = knownStatuses[f.id];
+        const cur = f.status || 'ready';
+
+        if (prev === 'processing' && cur === 'ready') {
+          const isLowQuality = (f.confidence||'').toLowerCase().includes('unclear');
+          if (isLowQuality) {
+            addNotif({type:'warning', title:'تم الرفع بجودة منخفضة', file:f.original_filename,
+              department:f.department_name_ar, section:f.section_name_ar, file_id:f.id});
+          } else {
+            addNotif({type:'success', title:'تم رفع وفهرسة الملف بنجاح', file:f.original_filename,
+              department:f.department_name_ar, section:f.section_name_ar,
+              doc_type:f.doc_type, decree_number:f.decree_number, year:f.year,
+              extraction_method:f.extraction_method, summary:f.summary, confidence:f.confidence, file_id:f.id});
+          }
+          changed = true;
+          // Trigger archive page refresh if visible
+          if (window._onFileReady) window._onFileReady(f.id, f);
+        } else if (prev === 'processing' && cur === 'error') {
+          addNotif({type:'error', title:'فشل معالجة الملف', file:f.original_filename,
+            error:f.error_message, file_id:f.id});
+          changed = true;
+          if (window._onFileError) window._onFileError(f.id, f);
+        }
+        knownStatuses[f.id] = cur;
+      });
+
+      // Update indexed count in chat widget header
+      const readyCount = files.filter(f => (f.status||'ready') === 'ready').length;
+      const deptSet = new Set(files.filter(f => (f.status||'ready') === 'ready').map(f => f.department_name_ar).filter(Boolean));
+      const countEl = document.getElementById('cwIndexedCount');
+      if (countEl) {
+        countEl.textContent = `📚 الوثائق المفهرسة: ${readyCount} وثيقة في ${deptSet.size} إدارة`;
+      }
+
+      // Notify archive page of all current statuses for card updates
+      if (window._onStatusPoll) window._onStatusPoll(files);
+
+    } catch(e) { /* ignore polling errors */ }
+  }
+
+  // Initialize polling
+  pollFileStatuses();
+  setInterval(pollFileStatuses, 5000);
+
+  // ── Chat Widget ─────────────────────────────────────────────────────
+  const state = {
+    open: localStorage.getItem('cw_open') === '1',
+    firstWelcomeDone: sessionStorage.getItem('cw_welcome_done') === '1',
+    messages: JSON.parse(sessionStorage.getItem('cw_msgs') || '[]')
+  };
+  const el = id => document.getElementById(id);
+  const fab = el('cwFab'), panel = el('cwPanel'), body = el('cwBody'), input = el('cwInput');
+
+  function saveMessages() { sessionStorage.setItem('cw_msgs', JSON.stringify(state.messages)); }
+  function setOpen(v) {
+    state.open = v; localStorage.setItem('cw_open', v ? '1':'0');
+    panel.classList.toggle('open', v);
+    if(!v) { el('cwDot').style.display='inline-block'; } else { el('cwDot').style.display='none'; }
+  }
+  function append(msg) {
+    const d = document.createElement('div');
+    d.className = 'cw-msg ' + (msg.role === 'user' ? 'cw-user' : 'cw-bot') + (msg.violation ? ' cw-violation':'');
+    d.textContent = msg.text;
+    if(msg.show_source && msg.source_label) {
+      const s = document.createElement('div'); s.className='cw-source'; s.textContent = msg.source_label;
+      d.appendChild(document.createElement('br')); d.appendChild(s);
+    }
+    if(msg.chips && msg.chips.length) {
+      const chips = document.createElement('div'); chips.className='cw-chips';
+      msg.chips.forEach(c=>{ const b=document.createElement('button'); b.className='cw-chip'; b.textContent=c; b.onclick=()=>send(c); chips.appendChild(b); });
+      d.appendChild(chips);
+    }
+    body.appendChild(d); body.scrollTop = body.scrollHeight;
+  }
+  function render() { body.innerHTML=''; state.messages.forEach(append); }
+  function typing(on) {
+    let t = document.getElementById('cwTyping');
+    if(on && !t) { t=document.createElement('div'); t.id='cwTyping'; t.className='cw-msg cw-bot'; t.innerHTML='<span class="cw-typing"><i></i><i></i><i></i></span>'; body.appendChild(t); body.scrollTop=body.scrollHeight; }
+    if(!on && t) t.remove();
+  }
+  function getSessionId() {
+    let sid = sessionStorage.getItem('chat_session_id');
+    if (!sid) { sid = 'sess_' + Math.random().toString(36).slice(2,12); sessionStorage.setItem('chat_session_id', sid); }
+    return sid;
+  }
+
+  async function send(textOverride) {
+    const q = (textOverride || input.value).trim(); if (!q) return;
+    state.messages.push({ role:'user', text:q }); saveMessages(); render(); input.value=''; typing(true);
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'cw-msg cw-bot';
+    let fullText = '', finalSource = null;
+
+    try {
+      const resp = await fetch('/api/chat/stream', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'X-Session-ID': getSessionId() },
+        body: JSON.stringify({ question: q }),
+      });
+      typing(false);
+      body.appendChild(msgEl); body.scrollTop = body.scrollHeight;
+
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split('\n\n'); buf = parts.pop() || '';
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.chunk) { fullText += data.chunk; msgEl.textContent = fullText; body.scrollTop = body.scrollHeight; }
+            if (data.done) finalSource = data.source;
+          } catch {}
+        }
+      }
+      if (finalSource?.show_source && finalSource.source_label) {
+        const s = document.createElement('div'); s.className = 'cw-source'; s.textContent = finalSource.source_label;
+        msgEl.appendChild(document.createElement('br')); msgEl.appendChild(s);
+      }
+      state.messages.push({ role:'bot', text:fullText, show_source:!!finalSource?.show_source, source_label:finalSource?.source_label||'', violation:!!finalSource?.contains_violation });
+      saveMessages();
+    } catch (err) {
+      typing(false);
+      const errMsg = (err && err.message) ? String(err.message) : 'خطأ';
+      if (body.contains(msgEl)) { msgEl.textContent = 'تعذر الاتصال: ' + errMsg; }
+      else { state.messages.push({ role:'bot', text:'تعذر الاتصال بالخادم.' }); saveMessages(); render(); }
+    }
+    if (!state.open) el('cwDot').style.display = 'inline-block';
+    // Save to unified history and notify portal
+    if (fullText) {
+      if (typeof ChatHistory !== 'undefined') ChatHistory.save(q, fullText, finalSource);
+      document.dispatchEvent(new CustomEvent('chatResponseReceived', { detail: { fileIds: (finalSource && finalSource.source_file_ids) || [] } }));
+    }
+  }
+  function ensureWelcome() {
+    if(state.firstWelcomeDone) return;
+    state.messages.push({role:'bot', text:'السلام عليكم! 👋 أنا مساعدك الذكي. يمكنني الإجابة على أسئلة عن الوثائق والبيانات المالية.', chips:['كم عدد العقود؟','ما إجمالي أوامر الشراء؟','ابحث عن فاتورة إنوفا']});
+    state.firstWelcomeDone = true; sessionStorage.setItem('cw_welcome_done','1'); saveMessages(); render();
+  }
+
+  fab.onclick = () => { setOpen(!state.open); if(state.open) ensureWelcome(); };
+  el('cwClose').onclick = () => setOpen(false);
+  el('cwMin').onclick = () => setOpen(false);
+  el('cwSend').onclick = () => send();
+  input.addEventListener('keydown', e => { if(e.key==='Enter') send(); });
+
+  const head = el('cwHead');
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  head.addEventListener('mousedown', (e)=>{ dragging=true; startX=e.clientX; startY=e.clientY; const r=panel.getBoundingClientRect(); origX=r.left; origY=r.top; });
+  window.addEventListener('mousemove', (e)=>{ if(!dragging) return; panel.style.right='auto'; panel.style.bottom='auto'; panel.style.left=(origX+(e.clientX-startX))+'px'; panel.style.top=(origY+(e.clientY-startY))+'px'; });
+  window.addEventListener('mouseup', ()=> dragging=false);
+
+  fetch('/api/config').then(r=>r.json()).then(c=>{
+    const lang = (typeof LangManager !== 'undefined') ? LangManager.current : (localStorage.getItem('pam_language') || localStorage.getItem('lang') || 'ar');
+    el('cwSystemName').textContent = lang==='ar'?c.system_name_ar:c.system_name_en;
+    el('cwOnlineText').textContent = (typeof LangManager !== 'undefined') ? LangManager.get('chat_online') : (lang==='ar'?'متصل':'Online');
+  }).catch(()=>{});
+
+  // React to language changes
+  document.addEventListener('languageChanged', (e) => {
+    el('cwOnlineText').textContent = e.detail.lang === 'ar' ? 'متصل' : 'Online';
+    const inp = el('cwInput');
+    if (inp) inp.placeholder = e.detail.lang === 'ar' ? 'اكتب سؤالك...' : 'Type your question...';
+  });
+
+  render();
+  if(new URLSearchParams(window.location.search).get('open_chat') === '1') { setOpen(true); ensureWelcome(); }
+  else { setOpen(state.open); if(state.open) ensureWelcome(); }
+})();
+</script>

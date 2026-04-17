@@ -1,0 +1,19 @@
+# Railway / Nixpacks build configuration
+# Provides system libs required by PyMuPDF (libmupdf) and pdfplumber (poppler)
+
+[phases.setup]
+nixPkgs = [
+  "mupdf",
+  "poppler_utils",
+  "gcc",
+  "libstdcxx5"
+]
+
+[phases.build]
+cmds = [
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
