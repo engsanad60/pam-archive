@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>الهيئة العامة للقوى العاملة - نظام الأرشفة الذكي</title>
-  <link rel="icon" href="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png" type="image/png">
+  <link rel="icon" href="/static/images/pam-logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -17,12 +17,12 @@
     /* Sidebar */
     .sidebar{background:linear-gradient(180deg,#1e3a5f 0%,#294c78 100%);color:#fff;padding:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
     .sidebar-brand{padding:0;border-bottom:1px solid rgba(255,255,255,.15)}
-    .sidebar-header{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px 15px 20px;text-align:center;gap:12px}
-    .sidebar-logo{width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));transition:transform .3s ease}
+    .sidebar-header{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;padding:25px 10px 20px!important;text-align:center!important;border-bottom:1px solid rgba(255,255,255,.15)!important;background:rgba(0,0,0,.1)!important}
+    .sidebar-logo{width:120px!important;height:120px!important;object-fit:contain!important;display:block!important;margin:0 auto 12px auto!important;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2))!important;transition:transform .3s ease}
     .sidebar-logo:hover{transform:scale(1.05)}
     .sidebar-title{display:flex;flex-direction:column;align-items:center;gap:4px}
-    .sidebar-title-main{font-size:13px;font-weight:700;color:#fff;font-family:'Cairo',sans-serif;line-height:1.4;text-align:center}
-    .sidebar-title-sub{font-size:10px;font-weight:400;color:#c9a84c;font-family:'Cairo',sans-serif;text-align:center;opacity:.9}
+    .sidebar-title-main{font-size:13px!important;font-weight:700!important;color:#fff!important;line-height:1.5!important;margin-top:8px!important;font-family:'Cairo',sans-serif;text-align:center}
+    .sidebar-title-sub{font-size:10px!important;color:#c9a84c!important;margin-top:3px!important;font-family:'Cairo',sans-serif;text-align:center;opacity:.9}
     .sidebar-nav{flex:1;padding:12px 10px}
     .nav-section-label{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;padding:12px 8px 6px;font-weight:700}
     .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;color:rgba(255,255,255,.85);text-decoration:none;transition:all .15s;border:1px solid transparent;margin-bottom:2px}
@@ -119,10 +119,10 @@
 <!-- Splash Screen -->
 <div id="splash">
   <div class="splash-logo">
-    <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+    <img src="/static/images/pam-logo.png"
+         onerror="this.src='/static/images/pam-logo.png' onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'""
          alt="الهيئة العامة للقوى العاملة"
-         style="height:120px;width:auto;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))"
-         onerror="this.onerror=null;this.outerHTML='<div style=\'width:100px;height:100px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:28px;\'>PAM</div>'">
+         style="height:120px;width:auto;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))">
   </div>
   <div class="splash-name">الهيئة العامة للقوى العاملة</div>
   <div class="splash-sub">نظام الأرشفة والمساعد الذكي</div>
@@ -134,10 +134,10 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="sidebar-header">
-        <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
-             alt="PAM Logo"
-             class="sidebar-logo"
-             onerror="this.onerror=null;this.outerHTML='<div style=\'width:80px;height:80px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:20px;\'>PAM</div>'">
+        <img src="/static/images/pam-logo.png"
+             onerror="this.src='/static/images/pam-logo.png' onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'""
+             alt="الهيئة العامة للقوى العاملة"
+             class="sidebar-logo">
         <div class="sidebar-title">
           <span class="sidebar-title-main">الهيئة العامة للقوى العاملة</span>
           <span class="sidebar-title-sub">نظام الأرشفة والمساعد الذكي</span>
@@ -228,7 +228,7 @@
         <div class="about-card">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
             <div style="flex-shrink:0">
-              <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+              <img src="/static/images/pam-logo.png" onerror="this.onerror=null;this.src='/static/images/pam-logo.png' onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'""
                    alt="الهيئة العامة للقوى العاملة"
                    style="height:60px;width:auto;object-fit:contain"
                    onerror="this.onerror=null;this.outerHTML='<div style=\'width:52px;height:52px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:14px;\'>PAM</div>'">

@@ -13,8 +13,8 @@ if (typeof LangManager === 'undefined') {
   .admin-layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
   .admin-sidebar{background:linear-gradient(180deg,#1e3a5f 0%,#1a3256 100%);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
   .asb-brand{padding:0;border-bottom:1px solid rgba(255,255,255,.15)}
-  .asb-header{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px 15px 18px;text-align:center;gap:12px}
-  .asb-sidebar-logo{width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));transition:transform .3s ease}
+  .asb-header{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;padding:25px 10px 20px!important;text-align:center!important;background:rgba(0,0,0,.1)!important}
+  .asb-sidebar-logo{width:120px!important;height:120px!important;object-fit:contain!important;display:block!important;margin:0 auto 12px auto!important;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2))!important;transition:transform .3s ease}
   .asb-sidebar-logo:hover{transform:scale(1.05)}
   .asb-title{display:flex;flex-direction:column;align-items:center;gap:4px}
   .asb-name{font-size:13px;font-weight:700;color:#fff;font-family:'Cairo',sans-serif;line-height:1.4;text-align:center}
@@ -39,7 +39,7 @@ if (typeof LangManager === 'undefined') {
 <aside class="admin-sidebar">
   <div class="asb-brand">
     <div class="asb-header">
-      <img src="https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png"
+      <img src="/static/images/pam-logo.png" onerror="this.onerror=null;this.src='/static/images/pam-logo.png' onerror="this.onerror=null;this.src='https://www.manpower.gov.kw/ImageProxy.ashx?path=/Images/Picture6.png'""
            alt="PAM Logo"
            class="asb-sidebar-logo"
            onerror="this.onerror=null;this.outerHTML='<div style=\'width:80px;height:80px;background:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1a2f4e;font-weight:bold;font-size:20px;\'>PAM</div>'">
