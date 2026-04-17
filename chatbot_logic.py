@@ -15,13 +15,56 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# Model constants - Haiku for speed, Sonnet for accuracy-critical tasks
-HAIKU_MODEL = "claude-haiku-4-5-20251001"
-SONNET_MODEL = "claude-sonnet-4-20250514"
+# Best model for Arabic legal accuracy
+OPUS_MODEL = "claude-opus-4-5"
+# Keep aliases so existing references resolve without change
+HAIKU_MODEL = OPUS_MODEL
+SONNET_MODEL = OPUS_MODEL
 
 NOT_FOUND_AR = "عذراً، لم أجد معلومات كافية للإجابة على سؤالك في الوثائق المتاحة."
 NOT_FOUND_EN = "Sorry, I could not find sufficient information to answer your question in the available documents."
 VIOLATION_AR = "عذراً، لا يمكنني الرد على هذا النوع من الرسائل. يرجى استخدام لغة لائقة."
+
+LEGAL_PERSONA_PROMPT = f"""أنت مستشار قانوني وخبير في اللوائح والقرارات الحكومية الكويتية،
+متخصص في قوانين العمل وقرارات الهيئة العامة للقوى العاملة.
+
+خلفيتك وخبرتك:
+- خبير في القانون الكويتي وأنظمة العمل
+- متمرس في قراءة وتفسير القرارات الوزارية والتعاميم الإدارية
+- تفهم المصطلحات القانونية العربية بدقة
+- تعرف كيف تتداخل القرارات وكيف يلغي الجديد القديم
+- تفهم الاستثناءات والحالات الخاصة في القانون
+
+مهاراتك في قراءة القرارات:
+1. تميز بين القرار الحالي والقرارات المُستشهد بها كمراجع
+2. تفهم أن "استثناءً من القرار رقم X" يعني أن القرار الجديد يخالف القديم وهذا الجديد هو الحاكم
+3. تستخرج الشروط والاستثناءات والمدد الزمنية بدقة
+4. تفهم المصطلحات: يُسمح، يُحظر، استثناء، مع عدم الإخلال، اعتباراً من، حتى تاريخ، بشرط موافقة
+5. تفهم التسلسل الهرمي للقرارات: الأحدث يلغي الأقدم
+
+قواعد الإجابة:
+- أجب كمستشار قانوني محترف بلغة واضحة ومبسطة
+- اذكر رقم القرار والسنة دائماً
+- اذكر الشروط المطلوبة بوضوح
+- اذكر المدة الزمنية للسريان إن وجدت
+- إذا كان هناك استثناء مؤقت، وضح ذلك بجلاء
+- استخدم نقاط أو أرقام لتوضيح الشروط المتعددة
+- إذا لم تجد معلومات كافية قل فقط: '{NOT_FOUND_AR}'
+
+قواعد القراءة القانونية الحرجة:
+- المستند المقدم لك هو القرار الحالي الحاكم
+- أي قرارات مذكورة داخله هي مراجع قديمة فقط
+- كلمة "استثناءً من" تعني أن الحكم الجديد يختلف لصالح المستخدم
+- الأحدث دائماً يطغى على الأقدم
+- اقرأ المادة الأولى والثانية بعناية - فيهما جوهر القرار
+
+قاعدة اللغة:
+- إذا كان السؤال بالعربية أجب بالعربية
+- إذا كان السؤال بالإنجليزية أجب بالإنجليزية
+
+مهم: في نهاية إجابتك اكتب في سطر منفصل:
+SOURCES_USED: [أرقام المستندات التي استخدمتها مفصولة بفاصلة، مثال: 1 أو 1,2]
+إذا لم تستخدم أي مستند اكتب: SOURCES_USED: none"""
 
 # ── Arabic/Western numeral helpers (mirrored from archive_logic) ──────────────
 _AR2W = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
@@ -713,68 +756,154 @@ class ChatbotService:
                 yield {"chunk": fallback, "done": True, "source": {"show_source": False}, "contains_violation": False, "source_file_ids": []}
                 return
 
-            context = "\n\n---\n\n".join(docs[:5])
-            source = self._build_source(metas[0] if metas else {}, lang_code)
-            # Build rich sources list (deduplicated by file_id)
-            seen_ids: set = set()
-            sources: List[Dict[str, Any]] = []
-            for m in metas:
-                fid = m.get("file_id", "")
-                if fid and fid not in seen_ids:
-                    seen_ids.add(fid)
-                    s = self._build_source(m, lang_code)
-                    sources.append({
-                        "file_id": fid,
-                        "filename": s["document"],
-                        "department": s["department"],
-                        "section": s["section"],
-                        "decree_number": s["decree_number"],
-                        "year": s["year"],
-                        "view_url": s["view_url"],
-                        "is_public": s["is_public"],
-                    })
-            source_file_ids = [s["file_id"] for s in sources]
+            # ── Build numbered context grouped by file_id ──────────────────────
+            # Group chunks/summaries by file_id, preserving order of first appearance
+            file_order: List[str] = []
+            file_to_meta: Dict[str, Any] = {}
+            file_to_docs: Dict[str, List[str]] = {}
+            for doc, meta in zip(docs, metas):
+                fid = meta.get("file_id", "")
+                if not fid:
+                    continue
+                if fid not in file_to_meta:
+                    file_order.append(fid)
+                    file_to_meta[fid] = meta
+                    file_to_docs[fid] = []
+                file_to_docs[fid].append(doc)
 
-            system_prompt = (
-                "أنت المساعد الذكي الرسمي للهيئة العامة للقوى العاملة في الكويت.\n\n"
-                "لديك ملخصات منظمة للقرارات والتعاميم الرسمية. كل ملخص يوضح بدقة ما يقرره كل مستند.\n\n"
-                "قواعد الإجابة:\n"
-                "- أجب بناءً على المعلومات المقدمة فقط\n"
-                "- اذكر رقم القرار والسنة في إجابتك\n"
-                "- اذكر الشروط ومدة السريان إن وجدت\n"
-                "- إذا كان الحكم استثنائياً مؤقتاً، وضح ذلك بوضوح\n"
-                f"- إذا لم تجد معلومات كافية قل فقط: '{NOT_FOUND_AR}'\n"
-                "- لا تذكر ما هي الوثائق المتاحة\n"
-                "- لا تقترح التواصل مع أي جهة\n"
-                "- إذا كان السؤال بالعربية أجب بالعربية، وإذا كان بالإنجليزية أجب بالإنجليزية\n\n"
-                f"الوثائق المتاحة:\n{context}"
-            )
+            # Build source_files_list (ordered, for SOURCES_USED parsing)
+            source_files_list: List[Dict[str, Any]] = []
+            numbered_parts: List[str] = []
+            for idx, fid in enumerate(file_order[:5], 1):
+                meta = file_to_meta[fid]
+                # Prefer smart summary chunk; take at most 2 chunks
+                chunks_for_file = file_to_docs[fid]
+                summary_chunks = [c for c, m in zip(docs, metas)
+                                  if m.get("file_id") == fid and m.get("content_type") == "smart_summary"]
+                raw_chunks = [c for c, m in zip(docs, metas)
+                              if m.get("file_id") == fid and m.get("content_type") != "smart_summary"]
+                combined = (summary_chunks + raw_chunks)[:2]
+                combined_text = "\n\n".join(combined)
+                numbered_parts.append(f"[مستند {idx}]:\n{combined_text}")
 
-            full_response = ""
+                s = self._build_source(meta, lang_code)
+                source_files_list.append({
+                    "file_id": fid,
+                    "filename": s["document"],
+                    "department": s["department"],
+                    "section": s["section"],
+                    "decree_number": s["decree_number"],
+                    "year": s["year"],
+                    "view_url": s["view_url"],
+                    "is_public": s["is_public"],
+                })
+
+            numbered_context = "\n\n---\n\n".join(numbered_parts)
+            source = self._build_source(file_to_meta.get(file_order[0], {}) if file_order else {}, lang_code)
+
+            system_prompt = LEGAL_PERSONA_PROMPT + f"\n\nالوثائق المتاحة:\n{numbered_context}"
+
+            # ── Stream response, buffering to strip SOURCES_USED: from output ──
+            # Use just "SOURCES_USED:" (no leading newline) for robust matching
+            SOURCES_MARKER = "SOURCES_USED:"
+            # Buffer slightly more than marker length so partial tokens don't slip through
+            BUFFER_WINDOW = len(SOURCES_MARKER) + 5
+            pending_buf = ""
+            full_answer = ""
+            sources_text = ""
+            marker_found = False
+
             try:
                 with self.raw_client.messages.stream(
                     model=HAIKU_MODEL,
-                    max_tokens=500,
+                    max_tokens=600,
                     system=system_prompt,
                     messages=[{"role": "user", "content": search_question}],
                 ) as stream:
                     for text in stream.text_stream:
-                        full_response += text
-                        yield {"chunk": text, "done": False, "source": {}, "contains_violation": False}
+                        if marker_found:
+                            # After marker: accumulate source indices, yield nothing
+                            sources_text += text
+                            continue
+
+                        pending_buf += text
+                        marker_pos = pending_buf.find(SOURCES_MARKER)
+                        if marker_pos != -1:
+                            marker_found = True
+                            # Strip trailing whitespace/newlines before the marker
+                            visible = pending_buf[:marker_pos].rstrip("\n ")
+                            sources_text = pending_buf[marker_pos + len(SOURCES_MARKER):]
+                            if visible:
+                                full_answer += visible
+                                yield {"chunk": visible, "done": False, "source": {}, "contains_violation": False}
+                            pending_buf = ""
+                        else:
+                            # Safe to stream: keep BUFFER_WINDOW chars buffered
+                            safe_len = max(0, len(pending_buf) - BUFFER_WINDOW)
+                            if safe_len > 0:
+                                safe = pending_buf[:safe_len]
+                                full_answer += safe
+                                yield {"chunk": safe, "done": False, "source": {}, "contains_violation": False}
+                                pending_buf = pending_buf[safe_len:]
+
+                # Flush remaining buffer after stream ends
+                if pending_buf and not marker_found:
+                    marker_pos = pending_buf.find(SOURCES_MARKER)
+                    if marker_pos != -1:
+                        visible = pending_buf[:marker_pos].rstrip("\n ")
+                        sources_text += pending_buf[marker_pos + len(SOURCES_MARKER):]
+                        if visible:
+                            full_answer += visible
+                            yield {"chunk": visible, "done": False, "source": {}, "contains_violation": False}
+                    else:
+                        full_answer += pending_buf
+                        yield {"chunk": pending_buf, "done": False, "source": {}, "contains_violation": False}
+
             except Exception as stream_exc:
                 logger.warning("Streaming failed, trying non-streaming: %s", stream_exc)
-                # Fallback to non-streaming
                 resp = self.raw_client.messages.create(
                     model=HAIKU_MODEL,
-                    max_tokens=1024,
+                    max_tokens=700,
                     system=system_prompt,
                     messages=[{"role": "user", "content": search_question}],
                 )
-                full_response = resp.content[0].text if resp.content else fallback
-                yield {"chunk": full_response, "done": False, "source": {}, "contains_violation": False}
+                raw_text = resp.content[0].text if resp.content else fallback
+                marker_pos = raw_text.find(SOURCES_MARKER)
+                if marker_pos != -1:
+                    full_answer = raw_text[:marker_pos].rstrip("\n ").strip()
+                    sources_text = raw_text[marker_pos + len(SOURCES_MARKER):]
+                else:
+                    full_answer = raw_text
+                yield {"chunk": full_answer, "done": False, "source": {}, "contains_violation": False}
 
-            self._log_chat(q_raw, full_response, lang, False, "none", ip, session_id, int(time.time() * 1000) - start_ms)
-            yield {"chunk": "", "done": True, "source": source, "sources": sources, "contains_violation": False, "source_file_ids": source_file_ids}
+            # ── Parse which sources were actually used ─────────────────────────
+            sources_text = sources_text.strip()
+            verified_sources: List[Dict[str, Any]] = []
+            if sources_text and sources_text.lower() != "none":
+                try:
+                    used_indices = [
+                        int(x.strip()) - 1
+                        for x in sources_text.replace("،", ",").split(",")
+                        if x.strip().isdigit()
+                    ]
+                    seen_verified: set = set()
+                    for i in used_indices:
+                        if 0 <= i < len(source_files_list):
+                            fid = source_files_list[i].get("file_id", "")
+                            if fid and fid not in seen_verified:
+                                seen_verified.add(fid)
+                                verified_sources.append(source_files_list[i])
+                except Exception:
+                    pass
+
+            # Strip sources if answer is a "not found" phrase
+            NO_ANSWER_PHRASES = [NOT_FOUND_AR, NOT_FOUND_EN, "عذراً، لم أجد", "لا تتوفر", "لم أتمكن"]
+            if any(phrase in full_answer for phrase in NO_ANSWER_PHRASES):
+                verified_sources = []
+
+            source_file_ids = [s["file_id"] for s in verified_sources]
+            self._log_chat(q_raw, full_answer, lang, False, "none", ip, session_id, int(time.time() * 1000) - start_ms)
+            yield {"chunk": "", "done": True, "source": source, "sources": verified_sources, "contains_violation": False, "source_file_ids": source_file_ids}
 
         except Exception as exc:
             logger.exception("stream_ask: ChromaDB/Claude query failed: %s", exc)

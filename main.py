@@ -446,13 +446,16 @@ async def upload_file(
     section_id: str = Form(...),
     year: str = Form(""),
 ) -> Dict[str, Any]:
-    """Fast upload: save file immediately, process in background."""
+    """Fast upload: save file immediately, process in background.
+    Year is optional — auto-detected from the document during processing."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="يسمح فقط برفع ملفات PDF")
 
+    # Use provided year if valid, otherwise fall back to current year as folder placeholder
     year = (year or "").strip()
-    if not year or not re.match(r"^\d{4}$", year):
-        raise HTTPException(status_code=400, detail="السنة مطلوبة (4 أرقام)")
+    if not re.match(r"^\d{4}$", year):
+        from datetime import datetime as _dt
+        year = str(_dt.utcnow().year)
 
     content = await file.read()
 

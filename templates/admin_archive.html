@@ -127,8 +127,9 @@
           <div class="row" style="margin-bottom:10px">
             <select id="upDep" class="select"></select>
             <select id="upSec" class="select"></select>
-            <select id="upYear" class="select"></select>
-            <input id="upYearCustom" class="input" type="text" inputmode="numeric" maxlength="4" placeholder="" />
+          </div>
+          <div style="margin-bottom:8px;padding:8px 12px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.4);border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px;color:#7a5f00;display:flex;align-items:center;gap:6px">
+            🤖 <span id="autoYearHint">السنة ستُكتشف تلقائياً من المستند</span>
           </div>
           <p id="noSectionsHint" class="hint" style="display:none"></p>
           <input id="fileInput" type="file" class="input" accept=".pdf" multiple style="display:none">
@@ -234,7 +235,7 @@ function applyLang(){
   $('search').placeholder=t('search');
   const dropEl=$('drop');if(dropEl)dropEl.textContent=t('drop');
   const treeTitle=$('treeTitle');if(treeTitle)treeTitle.textContent=t('tree');
-  const yearCust=$('upYearCustom');if(yearCust)yearCust.placeholder=t('yearCustom');
+  const ayHint=$('autoYearHint');if(ayHint)ayHint.textContent=lang==='en'?'Year will be detected automatically from the document':'السنة ستُكتشف تلقائياً من المستند';
   const upDep=$('upDep');if(upDep&&upDep.options.length){upDep.firstElementChild.textContent=t('upDep');}
   /* update lang toggle button */
   const btn=document.getElementById('langToggle');if(btn){btn.textContent=lang==='ar'?'EN':'عربي';}
@@ -244,7 +245,7 @@ function applyLang(){
 
 async function loadDepartments(){const j=await(await fetch('/api/departments')).json();deps=j.departments||[];renderUploadSelectors();renderTree();}
 async function loadFiles(){const j=await(await fetch('/api/files')).json();allFiles=j.files||[];renderTree();renderFiles();}
-async function loadYears(){const j=await(await fetch('/api/years/predefined')).json();predefinedYears=j.years||['2020','2021','2022','2023','2024','2025'];fillYearSelect($('upYear'),null,true);}
+async function loadYears(){const j=await(await fetch('/api/years/predefined')).json();predefinedYears=j.years||['2020','2021','2022','2023','2024','2025'];}
 
 function fillYearSelect(sel,detectedYear,includeEmpty){
   const cur=sel.value;sel.innerHTML='';
@@ -267,7 +268,6 @@ function renderUploadSelectors(){
   (dep&&dep.sections||[]).forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=nameSec(s);sSel.appendChild(o);});
   const hint=$('noSectionsHint');
   if(dep&&(!dep.sections||!dep.sections.length)){hint.style.display='block';hint.textContent=t('noSections');}else{hint.style.display='none';}
-  fillYearSelect($('upYear'),null,true);
 }
 
 function renderBreadcrumb(){
@@ -454,9 +454,6 @@ function clearQueue() {
 async function uploadAll() {
   const dep = $('upDep').value, sec = $('upSec').value;
   if (!dep || !sec) { toast(lang==='ar'?'اختر الإدارة والقسم':'Pick department and section', false); return; }
-  let yr = $('upYear').value.trim();
-  if ($('upYearCustom').value.trim()) yr = $('upYearCustom').value.trim();
-  if (!/^\d{4}$/.test(yr)) { toast(t('yearDigits'), false); return; }
 
   const readyItems = fileQueue.filter(f => f.status === 'ready');
   if (!readyItems.length) { toast('لا توجد ملفات للرفع', false); return; }
@@ -465,18 +462,18 @@ async function uploadAll() {
     item.status = 'uploading'; renderQueue();
     try {
       const fd = new FormData();
-      fd.append('file', item.file); fd.append('department_id', dep); fd.append('section_id', sec); fd.append('year', yr);
+      fd.append('file', item.file); fd.append('department_id', dep); fd.append('section_id', sec);
       const r = await fetch('/api/upload', { method: 'POST', body: fd });
       const j = await r.json();
       if (!r.ok) { item.status = 'error'; renderQueue(); toast(`❌ ${item.file.name}: ${j.detail || 'فشل'}`, false); continue; }
       item.status = 'done'; renderQueue();
       const depObj = deps.find(d => d.id === dep); const secObj = depObj && (depObj.sections||[]).find(s => s.id === sec);
-      allFiles.unshift({ id: j.file_id, file_name: item.file.name, original_filename: item.file.name, department_id: dep, department_name_ar: depObj?depObj.name_ar:'', department_name_en: depObj?depObj.name_en:'', section_id: sec, section_name_ar: secObj?secObj.name_ar:'', section_name_en: secObj?secObj.name_en:'', year: yr, upload_date: new Date().toISOString().slice(0,10), status: 'processing', doc_type: '', structured_data: null, decree_number: '', pages_count: 0, confidence: '', document_type: '', main_topic: '', summary: '', language: '', ocr_used: false, extraction_method: '', error_message: '' });
+      allFiles.unshift({ id: j.file_id, file_name: item.file.name, original_filename: item.file.name, department_id: dep, department_name_ar: depObj?depObj.name_ar:'', department_name_en: depObj?depObj.name_en:'', section_id: sec, section_name_ar: secObj?secObj.name_ar:'', section_name_en: secObj?secObj.name_en:'', year: '...', upload_date: new Date().toISOString().slice(0,10), status: 'processing', doc_type: '', structured_data: null, decree_number: '', pages_count: 0, confidence: '', document_type: '', main_topic: '', summary: '', language: '', ocr_used: false, extraction_method: '', error_message: '' });
       renderFiles();
     } catch (e) { item.status = 'error'; renderQueue(); toast(`❌ ${item.file.name}: خطأ`, false); }
   }
   const done = fileQueue.filter(f => f.status === 'done').length;
-  toast(`✅ تم رفع ${done} ملف بنجاح`);
+  toast(`✅ تم رفع ${done} ملف بنجاح — السنة ستُكتشف تلقائياً 🤖`);
   setTimeout(() => { fileQueue = fileQueue.filter(f => f.status !== 'done'); renderQueue(); }, 3000);
 }
 

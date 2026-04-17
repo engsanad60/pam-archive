@@ -75,9 +75,17 @@
   let cpMsgs = [], cpWelcomed = false;
   try { cpMsgs = JSON.parse(sessionStorage.getItem(CP_KEY) || '[]'); cpWelcomed = cpMsgs.length > 0; } catch {}
 
-  function cpBuildSourceCards(sources, lang) {
+  const CP_NO_ANSWER_PHRASES = [
+    'عذراً، لم أجد', 'Sorry, I could not find',
+    'لا تتوفر', 'لم أتمكن', 'لا توجد معلومات'
+  ];
+  function cpIsNoAnswer(text) {
+    return CP_NO_ANSWER_PHRASES.some(p => (text||'').includes(p));
+  }
+  function cpBuildSourceCards(sources, lang, answerText) {
+    if (cpIsNoAnswer(answerText)) return null;
     if (!sources || !sources.length) return null;
-    const validSrcs = sources.filter(s => s.file_id && s.view_url);
+    const validSrcs = sources.filter(s => s.file_id && s.view_url && (s.filename || s.decree_number));
     if (!validSrcs.length) return null;
     const isAr = (lang || 'ar') === 'ar';
     const tooltip = isAr ? 'اضغط لفتح المستند' : 'Click to open document';
@@ -97,10 +105,11 @@
       if (s.decree_number) metaParts.push(isAr ? `قرار رقم ${s.decree_number}` : `Decree ${s.decree_number}`);
       if (s.year) metaParts.push(s.year);
       if (s.department) metaParts.push(s.department);
+      const displayName = (s.filename || '').replace(/\.pdf$/i, '') || (isAr ? `قرار رقم ${s.decree_number}` : `Decree ${s.decree_number}`);
       card.innerHTML = `<div class="src-card-inner">
         <div class="src-card-icon">📄</div>
         <div class="src-card-info">
-          <div class="src-card-name" title="${(s.filename||'').replace(/"/g,'&quot;')}">${s.filename||''}</div>
+          <div class="src-card-name" title="${displayName.replace(/"/g,'&quot;')}">${displayName}</div>
           <div class="src-card-meta">${metaParts.join(' | ')}</div>
         </div>
         <div class="src-card-arrow">↗️</div>
@@ -125,10 +134,10 @@
     d.className = 'cp-msg ' + (m.role === 'user' ? 'cp-user' : 'cp-bot') + (m.viol ? ' cp-viol' : '');
     d.textContent = m.text;
     const curLang = (typeof LangManager !== 'undefined') ? LangManager.current : (localStorage.getItem('language') || 'ar');
-    if (m.sources && m.sources.length) {
-      const cards = cpBuildSourceCards(m.sources, curLang);
+    if (m.sources && m.sources.length && !cpIsNoAnswer(m.text)) {
+      const cards = cpBuildSourceCards(m.sources, curLang, m.text || '');
       if (cards) d.appendChild(cards);
-    } else if (m.show_source && m.src_label) {
+    } else if (m.show_source && m.src_label && !cpIsNoAnswer(m.text)) {
       const s = document.createElement('div'); s.className = 'cp-src'; s.textContent = m.src_label;
       d.appendChild(document.createElement('br')); d.appendChild(s);
     }
@@ -191,12 +200,12 @@
           } catch {}
         }
       }
-      // Append clickable source cards
+      // Append clickable source cards (only if answer is not "not found")
       const curLang = (typeof LangManager !== 'undefined') ? LangManager.current : (localStorage.getItem('language') || 'ar');
-      if (finalSources.length) {
-        const cards = cpBuildSourceCards(finalSources, curLang);
+      if (finalSources.length && !cpIsNoAnswer(fullText)) {
+        const cards = cpBuildSourceCards(finalSources, curLang, fullText);
         if (cards) msgEl.appendChild(cards);
-      } else if (finalSource?.show_source && finalSource.source_label) {
+      } else if (finalSource?.show_source && finalSource.source_label && !cpIsNoAnswer(fullText)) {
         const s = document.createElement('div'); s.className = 'cp-src'; s.textContent = finalSource.source_label;
         msgEl.appendChild(document.createElement('br')); msgEl.appendChild(s);
       }

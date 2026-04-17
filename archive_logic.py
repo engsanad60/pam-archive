@@ -130,7 +130,7 @@ COMBINED_ANALYSIS_PROMPT = """Analyze this document and return ONLY a single JSO
   "document_type": "type of document in its original language",
   "main_topic": "one line description in document language",
   "decree_number": "number if found, else empty string",
-  "year": "year if found, else empty string",
+  "year": "the year THIS document was issued (not years of referenced old decrees). Look in: document title 'لسنة XXXX', issue date at top, or header. Convert Arabic numerals ١٢٣ to 123. Empty string if not found.",
   "pages_read": number,
   "confidence": "Clear or Partially Clear or Unclear",
   "summary": "3-4 lines summary in document language",
@@ -545,7 +545,7 @@ class ArchiveManager:
                 img_bytes = pix.tobytes("png")
                 img_b64 = base64.b64encode(img_bytes).decode()
                 response = self.anthropic_client.messages.create(
-                    model="claude-sonnet-4-20250514",
+                    model="claude-opus-4-5",
                     max_tokens=4000,
                     messages=[
                         {
@@ -561,7 +561,22 @@ class ArchiveManager:
                                 },
                                 {
                                     "type": "text",
-                                    "text": "اقرأ كل النص الموجود في هذه الصورة بدقة تامة. اكتب النص كما هو بدون أي تعديل أو تلخيص.",
+                                    "text": (
+                                        "أنت خبير في قراءة الوثائق الحكومية العربية الرسمية. "
+                                        "اقرأ هذه الصورة بدقة تامة.\n\n"
+                                        "تعليمات خاصة للأرقام:\n"
+                                        "1. الأرقام المكتوبة بخط اليد بالعربية: ١=1، ٢=2، ٣=3، ٤=4، ٥=5، ٦=6، ٧=7، ٨=8، ٩=9، ٠=0\n"
+                                        "2. الأرقام في عناوين القرارات مهمة جداً — اقرأها بدقة\n"
+                                        "3. رقم القرار غالباً يكون بين قوسين مثل ( ٩ ) أو (9)\n"
+                                        "4. السنة دائماً 4 أرقام مثل 2026 أو ٢٠٢٦\n"
+                                        "5. إذا كان الرقم غير واضح، اذكر الاحتمالين\n\n"
+                                        "تعليمات للنص العربي:\n"
+                                        "1. الكلمات المتلاصقة افصلها: 'قراررقم' = 'قرار رقم'\n"
+                                        "2. المصطلحات الرسمية الشائعة: الهيئة العامة للقوى العاملة، قرار وزاري، تعميم إداري، "
+                                        "بشأن، اعتباراً من، حتى تاريخ، مع عدم الإخلال، استثناءً من، يُسمح، يُحظر، يُجيز\n"
+                                        "3. صحح الكلمات المشوهة بناءً على السياق\n\n"
+                                        "اكتب النص كاملاً كما هو في الصورة بدون تلخيص."
+                                    ),
                                 },
                             ],
                         }
@@ -579,7 +594,7 @@ class ArchiveManager:
             return raw_text
         try:
             resp = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-opus-4-5",
                 max_tokens=4000,
                 messages=[
                     {
@@ -588,6 +603,7 @@ class ArchiveManager:
                             "هذا نص مستخرج من مستند عربي ممسوح ضوئياً وفيه أخطاء OCR.\n"
                             "قم بتصحيح الأخطاء الإملائية والكلمات المشوهة وأعد كتابة النص "
                             "بشكل صحيح مع الحفاظ على المعنى الأصلي والأرقام والتواريخ.\n"
+                            "انتبه بشكل خاص لأرقام القرارات والسنوات وأسماء الجهات الحكومية.\n"
                             "أعد النص المصحح فقط بدون أي تعليق.\n\n"
                             f"النص:\n{raw_text}"
                         ),
@@ -633,7 +649,7 @@ class ArchiveManager:
         text_for_model = text[:15000] if text else "No readable text extracted."
         try:
             message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-opus-4-5",
                 max_tokens=2500,
                 temperature=0,
                 system=COMBINED_ANALYSIS_PROMPT,
@@ -692,7 +708,7 @@ class ArchiveManager:
             return ""
         try:
             response = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-opus-4-5",
                 max_tokens=2000,
                 messages=[{
                     "role": "user",
@@ -794,11 +810,13 @@ class ArchiveManager:
         year: str,
         original_filename: str,
     ) -> Tuple[str, Path]:
-        """Save file to disk instantly and create a 'processing' metadata entry."""
+        """Save file to disk instantly and create a 'processing' metadata entry.
+        If year is empty/invalid, the current year is used as a folder placeholder;
+        the actual document year is extracted and stored during background processing."""
         dep, sec = self._section_by_ids(department_id, section_id)
         year = str(year).strip()
         if not year or not re.match(r"^\d{4}$", year):
-            raise ValueError("السنة مطلوبة وبصيغة 4 أرقام")
+            year = str(datetime.utcnow().year)
 
         self._ensure_year_registered(department_id, section_id, year)
 
@@ -995,10 +1013,18 @@ class ArchiveManager:
             index_text = text if text else f"محتوى غير متاح في الملف {saved_name}"
             self._index_document(file_id, index_text, chroma_metadata, smart_summary=smart_summary)
 
-            # Step 5: Update metadata with full data + ready status
+            # Step 5: Register detected document year with section (so tree shows it correctly)
+            if doc_year and re.match(r"^\d{4}$", doc_year):
+                try:
+                    self._ensure_year_registered(department_id, section_id, doc_year)
+                except Exception:
+                    pass
+
+            # Step 6: Update metadata with full data + ready status (including detected year)
             self.update_file_metadata(file_id, {
                 "status": "ready",
                 "decree_number": decree_number,
+                "year": doc_year,          # overwrite placeholder with detected document year
                 "pages_count": str(pages_count),
                 "confidence": confidence,
                 "document_type": document_type,

@@ -275,9 +275,19 @@
 
   function saveMessages() { sessionStorage.setItem('cw_msgs', JSON.stringify(state.messages)); }
 
-  function buildSourceCards(sources, lang) {
+  const NO_ANSWER_PHRASES = [
+    'عذراً، لم أجد', 'Sorry, I could not find',
+    'لا تتوفر', 'لم أتمكن', 'لا توجد معلومات'
+  ];
+  function isNoAnswerText(text) {
+    return NO_ANSWER_PHRASES.some(p => (text||'').includes(p));
+  }
+  function buildSourceCards(sources, lang, answerText) {
+    // Don't show sources for "not found" answers
+    if (isNoAnswerText(answerText)) return null;
     if (!sources || !sources.length) return null;
-    const validSrcs = sources.filter(s => s.file_id && s.view_url);
+    // Must have file_id AND (filename or decree_number)
+    const validSrcs = sources.filter(s => s.file_id && s.view_url && (s.filename || s.decree_number));
     if (!validSrcs.length) return null;
     const isAr = (lang || 'ar') === 'ar';
     const tooltip = isAr ? 'اضغط لفتح المستند' : 'Click to open document';
@@ -297,10 +307,11 @@
       if (s.decree_number) metaParts.push(isAr ? `قرار رقم ${s.decree_number}` : `Decree ${s.decree_number}`);
       if (s.year) metaParts.push(s.year);
       if (s.department) metaParts.push(s.department);
+      const displayName = (s.filename || '').replace(/\.pdf$/i, '') || (isAr ? `قرار رقم ${s.decree_number}` : `Decree ${s.decree_number}`);
       card.innerHTML = `<div class="src-card-inner">
         <div class="src-card-icon">📄</div>
         <div class="src-card-info">
-          <div class="src-card-name" title="${(s.filename||'').replace(/"/g,'&quot;')}">${s.filename||''}</div>
+          <div class="src-card-name" title="${displayName.replace(/"/g,'&quot;')}">${displayName}</div>
           <div class="src-card-meta">${metaParts.join(' | ')}</div>
         </div>
         <div class="src-card-arrow">↗️</div>
@@ -321,7 +332,7 @@
     // Source cards (rich, clickable)
     const curLang = (typeof LangManager !== 'undefined') ? LangManager.current : (localStorage.getItem('language') || 'ar');
     if (msg.sources && msg.sources.length) {
-      const cards = buildSourceCards(msg.sources, curLang);
+      const cards = buildSourceCards(msg.sources, curLang, msg.text || '');
       if (cards) d.appendChild(cards);
     } else if(msg.show_source && msg.source_label) {
       // Fallback: plain text label
@@ -383,12 +394,12 @@
           } catch {}
         }
       }
-      // Append clickable source cards
+      // Append clickable source cards (only if answer is not "not found")
       const curLang = (typeof LangManager !== 'undefined') ? LangManager.current : (localStorage.getItem('language') || 'ar');
-      if (finalSources.length) {
-        const cards = buildSourceCards(finalSources, curLang);
+      if (finalSources.length && !isNoAnswerText(fullText)) {
+        const cards = buildSourceCards(finalSources, curLang, fullText);
         if (cards) msgEl.appendChild(cards);
-      } else if (finalSource?.show_source && finalSource.source_label) {
+      } else if (finalSource?.show_source && finalSource.source_label && !isNoAnswerText(fullText)) {
         const s = document.createElement('div'); s.className = 'cw-source'; s.textContent = finalSource.source_label;
         msgEl.appendChild(document.createElement('br')); msgEl.appendChild(s);
       }
