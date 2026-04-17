@@ -1,0 +1,24 @@
+Purchase Order
+Date : 05/04/2026 LPO : 4359
+To : Innova Integrated Solutions Cost Center : 0501
+Vendor Code : 2214 Location-Station Name : IT & Communication
+Technology - Common
+Attention To : Requested by :
+Telephone No : Delivery To : KBT
+Fax No : Contact Person : MADEHA ABDALQADER
+HAMEED
+Mobile No : Contact No :
+Email : Material Req.No :
+Quot./Inv.Ref : Date Of Material Req :
+Subject PD Dept
+Ship To IT & Communication Technology - Common Delivery Date
+Warranty Penalty Duration Payment terms
+7 Days after Delivery
+SR# Item code/description Category QTY Unit price( KWD ) Amount ( KWD )
+Computers &
+1 CMS Database Upgrade Networking.IT 1 4,830.000 4,830.000
+Solutions
+DISCOUNT 0.000
+TOTAL AMOUNT 4,830.00
+CURRENCY KWD
+REMARKS

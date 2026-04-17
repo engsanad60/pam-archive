@@ -1,0 +1,22 @@
+INNOVA Invoice
+CUSTOMER INFORMATION
+Customer Name: Oula Fuel Marketing
+Address:
+Oula Head Office: AlMirqab, Block 3, Kuwait Business Town Tower (KBT).
+Contract Reference and 4081 Oracle Database Resource
+Date:
+Authorized Acceptor: IT Department
+Invoice Number SU-INN-25-0075
+Date 13 October 2025
+SN Items Quantity Prices Comments
+Oracle Database Consultant – Part First Payment 50%
+1 2,100.00
+Time In Advance
+Total 2,100.00
+Name: Innova Integrated Solutions
+Bank: National Bank of Kuwait (NBK)
+AC: 2031615615
+IBAN: KW96NBOK0000000000002031615615
+Swift code: NBOKKWKW
+Oula Fuel Signature INNOVA Signature
+INNOVA Confidential 1 of 1

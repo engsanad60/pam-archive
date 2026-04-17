@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 from archive_logic import (
     ArchiveManager, CANCELLED_FILES,
-    normalize_numbers, load_stored_text, chunk_text,
+    normalize_numbers, load_stored_text, load_stored_summary, chunk_text,
 )
 from chatbot_logic import extract_decree_from_question
 
@@ -795,8 +795,14 @@ def _reindex_all_task() -> None:
                     "ocr_used": str(f.get("ocr_used", "false")).lower(),
                     "extraction_method": f.get("extraction_method", ""),
                 }
-                archive_manager._index_document(file_id, text, chroma_meta)
-                _logger.info("Re-indexed: %s", f.get("original_filename", file_id))
+                # Load existing smart summary (fast, no Claude call) or generate fresh one
+                smart_summary = load_stored_summary(file_id, BASE_DIR)
+                if not smart_summary:
+                    _logger.info("Generating smart summary for %s…", f.get("original_filename", file_id))
+                    smart_summary = archive_manager.create_smart_summary(text, f.get("original_filename", ""))
+
+                archive_manager._index_document(file_id, text, chroma_meta, smart_summary=smart_summary)
+                _logger.info("Re-indexed: %s (summary=%s)", f.get("original_filename", file_id), bool(smart_summary))
             except Exception as exc:
                 _logger.error("Failed to re-index file_id=%s: %s", file_id, exc)
 

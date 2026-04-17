@@ -83,6 +83,26 @@ def load_stored_text(file_id: str, base_dir: Optional[Path] = None) -> str:
                 pass
     return ""
 
+def save_stored_summary(file_id: str, summary: str, base_dir: Path) -> str:
+    """Persist smart summary to disk and return the path."""
+    path = _texts_dir(base_dir) / f"{file_id}_summary.txt"
+    path.write_text(summary, encoding="utf-8")
+    return str(path)
+
+def load_stored_summary(file_id: str, base_dir: Optional[Path] = None) -> str:
+    """Load previously saved smart summary from disk."""
+    search_dirs = [Path("data/texts"), Path("./data/texts")]
+    if base_dir:
+        search_dirs.insert(0, base_dir / "data" / "texts")
+    for d in search_dirs:
+        p = d / f"{file_id}_summary.txt"
+        if p.exists():
+            try:
+                return p.read_text(encoding="utf-8")
+            except Exception:
+                pass
+    return ""
+
 DEPARTMENTS_FILE = "departments.json"
 CONFIG_FILE = "system_config.json"
 FILES_METADATA_FILE = "files_metadata.json"
@@ -663,11 +683,60 @@ class ArchiveManager:
             "ocr_used": ocr_used,
         }
 
-    def _index_document(self, file_id: str, text: str, metadata: Dict[str, str]) -> None:
-        """Delete old chunks, save text to disk, then store overlapping chunks in ChromaDB."""
-        # 1. Remove previous chunks for this file
+    def create_smart_summary(self, text: str, filename: str) -> str:
+        """
+        Use Claude Sonnet to create a structured, unambiguous summary that clearly
+        separates the decree's OWN rulings from any referenced old decrees.
+        """
+        if not text or len(text.strip()) < 50:
+            return ""
+        try:
+            response = self.anthropic_client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2000,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "أنت خبير قانوني متخصص في تحليل القرارات الحكومية.\n\n"
+                        "اقرأ هذا المستند وأنشئ ملخصاً منظماً يوضح بدقة:\n\n"
+                        "1. هوية المستند (ما هو هذا القرار/التعميم نفسه)\n"
+                        "2. ما الذي يقرره هذا المستند تحديداً (القرارات الجديدة فقط)\n"
+                        "3. من له الحق ومن ليس له الحق بناءً على هذا المستند\n"
+                        "4. الشروط المطلوبة\n"
+                        "5. المدة الزمنية للسريان\n"
+                        "6. القطاعات أو الجهات المعنية\n"
+                        "7. القرارات القديمة المُستشهد بها فقط كمراجع (ليست جزءاً من قرارات هذا المستند)\n\n"
+                        "مهم جداً:\n"
+                        "- افصل بوضوح بين 'ما يقرره هذا المستند' و'ما يذكره كمراجع قديمة'\n"
+                        "- اكتب الملخص بصيغة تجعل أي شخص يقرأه يفهم الحكم الصحيح\n"
+                        "- استخدم عبارات واضحة مثل:\n"
+                        "  * 'هذا القرار يُجيز...'\n"
+                        "  * 'هذا القرار يشترط...'\n"
+                        "  * 'هذا القرار ساري من... حتى...'\n"
+                        "  * 'القرارات المذكورة كمراجع فقط (ليست جزءاً من هذا القرار): ...'\n\n"
+                        f"اسم الملف: {filename}\n\n"
+                        f"نص المستند:\n{text[:4000]}\n\n"
+                        "أنشئ الملخص المنظم الآن:"
+                    ),
+                }]
+            )
+            result = response.content[0].text.strip() if response.content else ""
+            logger.info("Smart summary created for %s (%d chars)", filename, len(result))
+            return result
+        except Exception as exc:
+            logger.warning("create_smart_summary failed (non-fatal): %s", exc)
+            return ""
+
+    def _index_document(self, file_id: str, text: str, metadata: Dict[str, str], smart_summary: str = "") -> None:
+        """Delete old chunks, save text to disk, store overlapping chunks + optional smart summary in ChromaDB."""
+        # 1. Remove all previous entries for this file (chunks + summary)
         try:
             self.chroma_collection.delete(where={"file_id": file_id})
+        except Exception:
+            pass
+        # Belt-and-suspenders: also delete summary by explicit ID
+        try:
+            self.chroma_collection.delete(ids=[f"{file_id}_summary"])
         except Exception:
             pass
 
@@ -685,12 +754,26 @@ class ArchiveManager:
         except Exception as exc:
             logger.warning("Could not save text to disk for %s: %s", file_id, exc)
 
-        # 4. Split into overlapping chunks and store directly in ChromaDB
+        ids, docs, metas = [], [], []
+
+        # 4. Store smart summary as the primary high-priority entry
+        if smart_summary and smart_summary.strip():
+            try:
+                save_stored_summary(file_id, smart_summary, self.base_dir)
+            except Exception as exc:
+                logger.warning("Could not save summary to disk for %s: %s", file_id, exc)
+            summary_meta = dict(norm_meta)
+            summary_meta["content_type"] = "smart_summary"
+            ids.append(f"{file_id}_summary")
+            docs.append(smart_summary)
+            metas.append(summary_meta)
+
+        # 5. Split raw text into overlapping chunks (secondary entries)
         chunks = chunk_text(norm_text)
         total = len(chunks)
-        ids, docs, metas = [], [], []
         for i, chunk in enumerate(chunks):
             chunk_meta = dict(norm_meta)
+            chunk_meta["content_type"] = "raw_chunk"
             chunk_meta["chunk_index"] = str(i)
             chunk_meta["total_chunks"] = str(total)
             ids.append(f"{file_id}_chunk_{i}")
@@ -699,7 +782,7 @@ class ArchiveManager:
 
         if ids:
             self.chroma_collection.add(documents=docs, metadatas=metas, ids=ids)
-        logger.info("Indexed %d chunk(s) for file_id=%s", total, file_id)
+        logger.info("Indexed %d chunk(s) + smart_summary=%s for file_id=%s", total, bool(smart_summary), file_id)
 
     # ── Background Processing (new fast upload flow) ──────────────────────────
 
@@ -877,7 +960,10 @@ class ArchiveManager:
             upload_date = target.get("upload_date", datetime.utcnow().date().isoformat())
             relative_path = target.get("relative_path", "")
 
-            # Step 4: Index in ChromaDB (normalize numbers in key fields)
+            # Step 4: Create smart summary for unambiguous chatbot retrieval
+            smart_summary = self.create_smart_summary(text, saved_name)
+
+            # Step 5: Index in ChromaDB (normalize numbers in key fields)
             norm_decree = normalize_numbers(str(decree_number or ""))
             norm_year = normalize_numbers(str(year or ""))
             chroma_metadata = {
@@ -907,7 +993,7 @@ class ArchiveManager:
                 "doc_type": doc_type,
             }
             index_text = text if text else f"محتوى غير متاح في الملف {saved_name}"
-            self._index_document(file_id, index_text, chroma_metadata)
+            self._index_document(file_id, index_text, chroma_metadata, smart_summary=smart_summary)
 
             # Step 5: Update metadata with full data + ready status
             self.update_file_metadata(file_id, {
@@ -1028,7 +1114,9 @@ class ArchiveManager:
                     "extraction_method": f.get("extraction_method", ""),
                     "doc_type": f.get("doc_type", ""),
                 }
-                self._index_document(file_id, text, chroma_metadata)
+                # Load existing smart summary from disk (avoids re-calling Claude on startup)
+                smart_summary = load_stored_summary(file_id, self.base_dir)
+                self._index_document(file_id, text, chroma_metadata, smart_summary=smart_summary)
                 reindexed += 1
                 logger.info("Re-indexed on startup: %s", f.get("original_filename", file_id))
             except Exception as exc:

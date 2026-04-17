@@ -68,6 +68,23 @@ def load_stored_text_chatbot(file_id: str, base_dir: Optional[Path] = None) -> s
                 pass
     return ""
 
+def load_stored_summary_chatbot(file_id: str, base_dir: Optional[Path] = None) -> str:
+    """Load persisted smart summary for a file (written during indexing)."""
+    candidates = []
+    if base_dir:
+        candidates.append(base_dir / "data" / "texts" / f"{file_id}_summary.txt")
+    candidates += [
+        Path("data/texts") / f"{file_id}_summary.txt",
+        Path("./data/texts") / f"{file_id}_summary.txt",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                return p.read_text(encoding="utf-8")
+            except Exception:
+                pass
+    return ""
+
 GREETING_KEYWORDS = [
     "السلام", "سلام", "مرحبا", "مرحباً", "هلا", "صباح", "مساء",
     "أهلا", "أهلاً", "تحية", "hello", "hi", "hey", "good morning",
@@ -542,8 +559,10 @@ class ChatbotService:
             docs, metas = [], []
             for f in matched[:5]:
                 file_id = f.get("id") or f.get("file_id", "")
-                # Prefer stored clean text; fall back to summary/topic
-                text = load_stored_text_chatbot(file_id, self.base_dir)
+                # Prefer smart summary → raw text → metadata fallback
+                text = load_stored_summary_chatbot(file_id, self.base_dir)
+                if not text:
+                    text = load_stored_text_chatbot(file_id, self.base_dir)
                 if not text:
                     text = " ".join(filter(None, [
                         f.get("summary", ""),
@@ -574,10 +593,10 @@ class ChatbotService:
             logger.warning("Metadata keyword search failed: %s", exc)
             return [], []
 
-    def _direct_chromadb_search(self, query: str, n_results: int = 5) -> Tuple[List[str], List[Dict]]:
+    def _direct_chromadb_search(self, query: str, n_results: int = 8) -> Tuple[List[str], List[Dict]]:
         """
-        Multi-query ChromaDB search with distance threshold and metadata fallback.
-        Normalizes Arabic numbers, tries variations, deduplicates by file_id chunk key.
+        Multi-query ChromaDB search with 2-pass prioritization:
+        smart summaries are returned first, then raw chunks.
         """
         norm_query = normalize_numbers(query)
         variations = self._build_query_variations(norm_query)
@@ -595,17 +614,15 @@ class ChatbotService:
                 metas = results.get("metadatas",   [[]])[0] or []
                 dists = results.get("distances",   [[]])[0] or []
                 for doc, meta, dist in zip(docs, metas, dists):
-                    # Accept results with distance < 1.5 (permissive threshold)
                     if dist > 1.5:
                         continue
-                    # Deduplicate by first 80 chars of content
                     key = (doc or "")[:80]
                     if key and key not in seen_docs:
                         seen_docs[key] = (doc, meta, dist)
             except Exception as exc:
                 logger.warning("ChromaDB variation search failed: %s", exc)
 
-        # Sort by distance ascending (best match first)
+        # Sort by distance ascending
         ranked = sorted(seen_docs.values(), key=lambda x: x[2])
 
         if not ranked:
@@ -616,8 +633,13 @@ class ChatbotService:
                 if key and key not in seen_docs:
                     ranked.append((doc, meta, 0.0))
 
-        final_docs  = [r[0] for r in ranked[:n_results]]
-        final_metas = [r[1] for r in ranked[:n_results]]
+        # 2-pass: smart summaries first, then raw chunks
+        summary_results = [(d, m, dist) for d, m, dist in ranked if m.get("content_type") == "smart_summary"]
+        chunk_results   = [(d, m, dist) for d, m, dist in ranked if m.get("content_type") != "smart_summary"]
+        ordered = summary_results + chunk_results
+
+        final_docs  = [r[0] for r in ordered[:n_results]]
+        final_metas = [r[1] for r in ordered[:n_results]]
         return final_docs, final_metas
 
     def stream_ask(
@@ -682,16 +704,16 @@ class ChatbotService:
             except Exception:
                 pass
 
-        # 6. Direct ChromaDB search + streaming Claude Haiku response
+        # 6. Direct ChromaDB search (smart summaries prioritized) + streaming response
         try:
-            docs, metas = self._direct_chromadb_search(search_question, n_results=3)
+            docs, metas = self._direct_chromadb_search(search_question, n_results=8)
 
             if not docs:
                 self._log_chat(q_raw, fallback, lang, False, "none", ip, session_id, int(time.time() * 1000) - start_ms)
                 yield {"chunk": fallback, "done": True, "source": {"show_source": False}, "contains_violation": False, "source_file_ids": []}
                 return
 
-            context = "\n\n---\n\n".join(docs[:3])
+            context = "\n\n---\n\n".join(docs[:5])
             source = self._build_source(metas[0] if metas else {}, lang_code)
             # Build rich sources list (deduplicated by file_id)
             seen_ids: set = set()
@@ -713,21 +735,18 @@ class ChatbotService:
                     })
             source_file_ids = [s["file_id"] for s in sources]
 
-            org_name = "الهيئة العامة للقوى العاملة - دولة الكويت"
             system_prompt = (
-                f"أنت المساعد الذكي الرسمي لـ {org_name}.\n"
-                "مهمتك مساعدة الموظفين والمراجعين في الاطلاع على الوثائق والقرارات واللوائح.\n"
-                "أجب بناءً على الوثائق المتاحة أدناه فقط. لا تستخدم معلومات خارجية.\n\n"
-                "قواعد صارمة للرد:\n"
-                "- إذا لم تجد إجابة واضحة في الوثائق المتاحة، قل ONLY هذه الجملة بالضبط:\n"
-                f'  "{NOT_FOUND_AR}"\n'
-                "- لا تقل أبداً 'الوثيقة المتاحة تتعلق بـ' أو 'الوثائق المتاحة لدي تتضمن فقط'\n"
-                "- لا تبدأ بتعداد محتويات الوثائق إذا لم يسأل المستخدم عن ذلك\n"
-                "- اجب مباشرةً على سؤال المستخدم\n\n"
-                "تعامل مع هذه كمرادفات:\n"
-                "- 'القرار الوزاري رقم' = 'قرار وزاري رقم' = 'قرار رقم' = 'Q.V. No.'\n"
-                "- الأرقام العربية (١٢٣) = الأرقام الغربية (123)\n"
-                "- 'التعميم رقم' = 'تعميم رقم'\n\n"
+                "أنت المساعد الذكي الرسمي للهيئة العامة للقوى العاملة في الكويت.\n\n"
+                "لديك ملخصات منظمة للقرارات والتعاميم الرسمية. كل ملخص يوضح بدقة ما يقرره كل مستند.\n\n"
+                "قواعد الإجابة:\n"
+                "- أجب بناءً على المعلومات المقدمة فقط\n"
+                "- اذكر رقم القرار والسنة في إجابتك\n"
+                "- اذكر الشروط ومدة السريان إن وجدت\n"
+                "- إذا كان الحكم استثنائياً مؤقتاً، وضح ذلك بوضوح\n"
+                f"- إذا لم تجد معلومات كافية قل فقط: '{NOT_FOUND_AR}'\n"
+                "- لا تذكر ما هي الوثائق المتاحة\n"
+                "- لا تقترح التواصل مع أي جهة\n"
+                "- إذا كان السؤال بالعربية أجب بالعربية، وإذا كان بالإنجليزية أجب بالإنجليزية\n\n"
                 f"الوثائق المتاحة:\n{context}"
             )
 
