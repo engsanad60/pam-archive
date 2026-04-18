@@ -906,7 +906,7 @@ class ChatbotService:
             try:
                 with self.raw_client.messages.stream(
                     model=HAIKU_MODEL,
-                    max_tokens=600,
+                    max_tokens=1500,
                     system=system_prompt,
                     messages=_hist_turns,
                 ) as stream:
@@ -953,7 +953,7 @@ class ChatbotService:
                 logger.warning("Streaming failed, trying non-streaming: %s", stream_exc)
                 resp = self.raw_client.messages.create(
                     model=HAIKU_MODEL,
-                    max_tokens=700,
+                    max_tokens=1500,
                     system=system_prompt,
                     messages=_hist_turns,
                 )
