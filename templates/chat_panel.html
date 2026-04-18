@@ -53,6 +53,7 @@
         <div class="cp-head-sub" id="cpIndexedCount">📚 جاري التحميل...</div>
       </div>
     </div>
+    <button id="cpNewChat" onclick="cpNewChat()" title="محادثة جديدة" style="border:none;background:transparent;color:#fff;font-size:13px;cursor:pointer;padding:0 4px;margin-left:4px">🔄</button>
     <button class="cp-close" onclick="closeChatPanel()" title="إغلاق">×</button>
   </div>
   <div class="cp-sugs" id="cpSuggestions">
@@ -74,6 +75,8 @@
   const CP_KEY = 'cp_msgs_v1';
   let cpMsgs = [], cpWelcomed = false;
   try { cpMsgs = JSON.parse(sessionStorage.getItem(CP_KEY) || '[]'); cpWelcomed = cpMsgs.length > 0; } catch {}
+  // In-memory conversation history for multi-turn context (cleared on page refresh)
+  let cpConversationHistory = [];
 
   const CP_NO_ANSWER_PHRASES = [
     'عذراً، لم أجد', 'Sorry, I could not find',
@@ -176,7 +179,7 @@
       const resp = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Session-ID': cpGetSessionId() },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, conversation_history: cpConversationHistory.slice(-6) }),
       });
       cpTyping(false);
       if (c) { c.appendChild(msgEl); c.scrollTop = c.scrollHeight; }
@@ -211,6 +214,11 @@
       }
       cpMsgs.push({ role: 'bot', text: fullText, sources: finalSources, show_source: !!finalSource?.show_source, src_label: finalSource?.source_label || '', viol: !!finalSource?.contains_violation });
       cpSave();
+      // Update in-memory conversation history for multi-turn context
+      if (fullText) {
+        cpConversationHistory.push({ role: 'user', content: q });
+        cpConversationHistory.push({ role: 'assistant', content: fullText });
+      }
       // Save to unified history and notify portal
       if (fullText) {
         if (typeof ChatHistory !== 'undefined') ChatHistory.save(q, fullText, finalSource, finalSources);
@@ -238,6 +246,14 @@
     const panel = document.getElementById('cpPanel'), tab = document.getElementById('cpTab');
     if (panel) panel.classList.remove('open');
     if (tab) tab.style.display = '';
+  };
+
+  window.cpNewChat = function() {
+    cpConversationHistory = [];
+    cpMsgs = [];
+    cpWelcomed = false;
+    cpSave();
+    cpRender();
   };
 
   const inp = document.getElementById('cpInput');

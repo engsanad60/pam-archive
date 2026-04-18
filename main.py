@@ -120,6 +120,7 @@ app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 class ChatRequest(BaseModel):
     question: str
+    conversation_history: List[Dict[str, Any]] = []
 
 
 class ChatResponse(BaseModel):
@@ -645,7 +646,12 @@ async def chat_stream(payload: ChatRequest, request: Request) -> StreamingRespon
 
         def run_sync_gen():
             try:
-                for chunk_data in chatbot_service.stream_ask(question, ip=ip, session_id=session_id):
+                for chunk_data in chatbot_service.stream_ask(
+                    question,
+                    conversation_history=payload.conversation_history,
+                    ip=ip,
+                    session_id=session_id,
+                ):
                     asyncio.run_coroutine_threadsafe(queue.put(chunk_data), loop)
             except Exception as exc:
                 logger.exception("stream_ask generator error: %s", exc)

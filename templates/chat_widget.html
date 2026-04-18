@@ -92,7 +92,7 @@
         <div class="cw-indexed" id="cwIndexedCount">📚 جاري التحميل...</div>
       </div>
     </div>
-    <div><button id="cwMin">−</button><button id="cwClose">×</button></div>
+    <div><button id="cwNewChat" title="محادثة جديدة" style="font-size:13px;padding:0 4px">🔄</button><button id="cwMin">−</button><button id="cwClose">×</button></div>
   </header>
   <div id="cwBody" class="cw-body"></div>
   <footer class="cw-foot">
@@ -270,6 +270,8 @@
     firstWelcomeDone: sessionStorage.getItem('cw_welcome_done') === '1',
     messages: JSON.parse(sessionStorage.getItem('cw_msgs') || '[]')
   };
+  // In-memory conversation history for multi-turn context (cleared on page refresh)
+  let conversationHistory = [];
   const el = id => document.getElementById(id);
   const fab = el('cwFab'), panel = el('cwPanel'), body = el('cwBody'), input = el('cwInput');
 
@@ -370,7 +372,7 @@
       const resp = await fetch('/api/chat/stream', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', 'X-Session-ID': getSessionId() },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, conversation_history: conversationHistory.slice(-6) }),
       });
       typing(false);
       body.appendChild(msgEl); body.scrollTop = body.scrollHeight;
@@ -405,6 +407,11 @@
       }
       state.messages.push({ role:'bot', text:fullText, sources:finalSources, show_source:!!finalSource?.show_source, source_label:finalSource?.source_label||'', violation:!!finalSource?.contains_violation });
       saveMessages();
+      // Update in-memory conversation history for multi-turn context
+      if (fullText) {
+        conversationHistory.push({ role: 'user', content: q });
+        conversationHistory.push({ role: 'assistant', content: fullText });
+      }
     } catch (err) {
       typing(false);
       const errMsg = (err && err.message) ? String(err.message) : 'خطأ';
@@ -427,6 +434,12 @@
   fab.onclick = () => { setOpen(!state.open); if(state.open) ensureWelcome(); };
   el('cwClose').onclick = () => setOpen(false);
   el('cwMin').onclick = () => setOpen(false);
+  el('cwNewChat').onclick = () => {
+    conversationHistory = [];
+    state.messages = [];
+    saveMessages();
+    render();
+  };
   el('cwSend').onclick = () => send();
   input.addEventListener('keydown', e => { if(e.key==='Enter') send(); });
 
