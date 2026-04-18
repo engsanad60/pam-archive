@@ -43,7 +43,16 @@
   .cw-send{border:none;background:#1e3a5f;color:#fff;border-radius:10px;padding:10px 12px;cursor:pointer}
   .cw-typing{display:inline-flex;gap:4px}.cw-typing i{width:6px;height:6px;border-radius:50%;background:#6b7280;animation:cwPulse 1s infinite}.cw-typing i:nth-child(2){animation-delay:.15s}.cw-typing i:nth-child(3){animation-delay:.3s}
   @keyframes cwPulse{0%,80%,100%{transform:scale(.8)}40%{transform:scale(1)}} @keyframes cwBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}} @keyframes cwUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
-  @media(max-width:720px){.cw-panel{left:0;right:0;bottom:0;width:100vw;height:100vh;border-radius:0}.cw-head{border-radius:0}}
+  @media(max-width:720px){
+    .cw-panel{left:0;right:0;bottom:0;width:100vw!important;height:100vh!important;border-radius:0}
+    .cw-head{border-radius:0}
+    .cw-input{font-size:16px!important}
+    .cw-send{padding:12px 16px!important}
+    .cw-msg{max-width:90%!important;font-size:14px!important}
+    .src-card{padding:8px!important}
+    .src-card-name{font-size:12px!important;max-width:180px!important}
+    table{display:block!important;overflow-x:auto!important;white-space:nowrap!important}
+  }
 
   /* ── Notification Bell ── */
   .notif-bell-wrap{position:fixed;top:14px;left:14px;z-index:1400}
@@ -291,45 +300,74 @@
   }
   function formatMessage(text) {
     if (!text) return '';
-    let t = text
-      // Code blocks (before other replacements)
+    let formatted = text;
+
+    // ── LaTeX: $$...$$ blocks ──────────────────────────────────────────────
+    formatted = formatted.replace(/\$\$([\s\S]*?)\$\$/g, (_, expr) => {
+      const readable = expr
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 ÷ $2')
+        .replace(/\\times/g, '×')
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+        .replace(/\\_/g, '_').replace(/[{}]/g, '').trim();
+      return `<span style="font-family:monospace;background:#f0f4ff;padding:2px 6px;border-radius:4px">${readable}</span>`;
+    });
+    // ── LaTeX: $...$ inline ────────────────────────────────────────────────
+    formatted = formatted.replace(/\$([^$\n]+)\$/g, (_, expr) => {
+      const readable = expr
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 ÷ $2')
+        .replace(/\\times/g, '×')
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/[{}]/g, '').trim();
+      return `<span style="font-family:monospace">${readable}</span>`;
+    });
+    // ── Remove remaining LaTeX commands ───────────────────────────────────
+    formatted = formatted
+      .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, '$1')
+      .replace(/\\[a-zA-Z]+/g, '')
+      .replace(/\\\\/g, '<br>');
+
+    // ── Standard markdown ──────────────────────────────────────────────────
+    formatted = formatted
       .replace(/```([\s\S]*?)```/g,
         '<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin:6px 0;font-family:monospace;font-size:13px;direction:ltr;text-align:left">$1</div>')
-      // Headers
-      .replace(/^### (.*)/gm, '<h4 style="margin:8px 0 4px;color:#1a2f4e;font-size:14px">$1</h4>')
-      .replace(/^## (.*)/gm,  '<h3 style="margin:10px 0 5px;color:#1a2f4e;font-size:15px">$1</h3>')
-      .replace(/^# (.*)/gm,   '<h2 style="margin:10px 0 5px;color:#1a2f4e;font-size:16px">$1</h2>')
-      // Bold
+      .replace(/^### (.*)/gm, '<h4 style="margin:4px 0;color:#1a2f4e;font-size:14px">$1</h4>')
+      .replace(/^## (.*)/gm,  '<h3 style="margin:6px 0;color:#1a2f4e;font-size:15px">$1</h3>')
+      .replace(/^# (.*)/gm,   '<h2 style="margin:6px 0;color:#1a2f4e;font-size:16px">$1</h2>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Blockquotes
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/^> (.*)/gm,
         '<div style="border-right:3px solid #c9a84c;padding:4px 10px;margin:4px 0;background:#fffdf0;border-radius:4px">$1</div>')
-      // Horizontal rules
-      .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0">')
-      // Bullet points
-      .replace(/^[•\-\*] (.*)/gm, '<div style="padding:2px 0 2px 15px">• $1</div>')
-      // Numbered lists
+      .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:6px 0">')
+      .replace(/^[•\-\*] (.*)/gm, '<div style="padding:1px 0 1px 15px">• $1</div>')
       .replace(/^\d+\. (.*)/gm, (m, p1) => {
         const n = m.match(/^(\d+)/)[1];
-        return `<div style="padding:2px 0 2px 5px">${n}. ${p1}</div>`;
-      })
-      // Markdown table rows  →  HTML <tr><td>
-      .replace(/\|(.+)\|/g, m => {
-        const cells = m.split('|').filter(c => c.trim() !== '');
+        return `<div style="padding:1px 0 1px 5px">${n}. ${p1}</div>`;
+      });
+
+    // ── Markdown tables (header | separator | rows) ────────────────────────
+    const tableRegex = /(\|.+\|\n)([\|\-\s:]+\|\n)((?:\|.+\|\n?)*)/gm;
+    formatted = formatted.replace(tableRegex, (_, header, _sep, rows) => {
+      const hCells = header.split('|').filter(c => c.trim());
+      const headHTML = hCells.map(c =>
+        `<th style="padding:6px 10px;background:#1a2f4e;color:white;font-size:13px;text-align:center">${c.trim()}</th>`
+      ).join('');
+      const rowsHTML = rows.trim().split('\n').map(row => {
+        const cells = row.split('|').filter(c => c.trim());
         return '<tr>' + cells.map(c =>
-          `<td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:13px">${c.trim()}</td>`
+          `<td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:13px;text-align:center">${c.trim()}</td>`
         ).join('') + '</tr>';
-      })
-      // Collapse separator rows (---|---) that became empty <tr>s
-      .replace(/<tr>(<td style="[^"]*">[-: ]+<\/td>)+<\/tr>/g, '')
-      // Line breaks
+      }).join('');
+      return `<table style="width:100%;border-collapse:collapse;margin:6px 0">${headHTML ? '<thead><tr>' + headHTML + '</tr></thead>' : ''}<tbody>${rowsHTML}</tbody></table>`;
+    });
+
+    // ── Line breaks ────────────────────────────────────────────────────────
+    formatted = formatted
       .replace(/\n{3,}/g, '\n\n')
       .replace(/\n\n/g, '<br>')
       .replace(/\n/g, ' ');
-    // Wrap consecutive <tr> blocks in a table
-    t = t.replace(/(<tr>[\s\S]*?<\/tr>)+/g,
-      m => `<table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:13px">${m}</table>`);
-    return t;
+
+    return formatted;
   }
 
   function buildSourceCards(sources, lang, answerText) {

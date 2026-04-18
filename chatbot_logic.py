@@ -117,6 +117,12 @@ LEGAL_PERSONA_PROMPT = f"""أنت دكتور متخصص وخبير معتمد ف
 - إذا كان السؤال بالعربية أجب بالعربية
 - إذا كان السؤال بالإنجليزية أجب بالإنجليزية
 
+تعليمات التنسيق:
+- لا تستخدم LaTeX أو رموز رياضية معقدة مثل $$ أو \frac
+- اكتب الحسابات بطريقة عادية: 1250 ÷ 30 = 41.67
+- استخدم الجداول بصيغة Markdown العادية فقط
+- اكتب الأرقام والعمليات بشكل مقروء للجميع
+
 مهم: في نهاية إجابتك اكتب في سطر منفصل:
 SOURCES_USED: [أرقام المستندات التي استخدمتها مفصولة بفاصلة، مثال: 1 أو 1,2]
 إذا لم تستخدم أي مستند اكتب: SOURCES_USED: none"""
@@ -906,7 +912,7 @@ class ChatbotService:
             try:
                 with self.raw_client.messages.stream(
                     model=HAIKU_MODEL,
-                    max_tokens=1500,
+                    max_tokens=3000,
                     system=system_prompt,
                     messages=_hist_turns,
                 ) as stream:
@@ -953,7 +959,7 @@ class ChatbotService:
                 logger.warning("Streaming failed, trying non-streaming: %s", stream_exc)
                 resp = self.raw_client.messages.create(
                     model=HAIKU_MODEL,
-                    max_tokens=1500,
+                    max_tokens=3000,
                     system=system_prompt,
                     messages=_hist_turns,
                 )

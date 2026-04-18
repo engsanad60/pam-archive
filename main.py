@@ -118,6 +118,19 @@ _static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 
+def get_real_ip(request: Request) -> str:
+    """Return the real client IP, checking proxy headers set by Railway/nginx."""
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        real_ip = forwarded_for.split(",")[0].strip()
+        if real_ip:
+            return real_ip
+    real_ip = request.headers.get("X-Real-IP", "").strip()
+    if real_ip:
+        return real_ip
+    return request.client.host if request.client else "unknown"
+
+
 class ChatRequest(BaseModel):
     question: str
     conversation_history: List[Dict[str, Any]] = []
@@ -613,7 +626,7 @@ async def chat_api(payload: ChatRequest, request: Request) -> ChatResponse:
     if not question:
         raise HTTPException(status_code=400, detail="السؤال مطلوب")
 
-    ip = request.client.host if request.client else "unknown"
+    ip = get_real_ip(request)
     session_id = request.headers.get("X-Session-ID", "")
 
     try:
@@ -637,7 +650,7 @@ async def chat_stream(payload: ChatRequest, request: Request) -> StreamingRespon
     if not question:
         raise HTTPException(status_code=400, detail="السؤال مطلوب")
 
-    ip = request.client.host if request.client else "unknown"
+    ip = get_real_ip(request)
     session_id = request.headers.get("X-Session-ID", "")
 
     async def generate():
