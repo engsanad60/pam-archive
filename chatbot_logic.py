@@ -836,16 +836,30 @@ class ChatbotService:
             numbered_context = "\n\n---\n\n".join(numbered_parts)
             source = self._build_source(file_to_meta.get(file_order[0], {}) if file_order else {}, lang_code)
 
-            system_prompt = LEGAL_PERSONA_PROMPT + f"\n\nالوثائق المتاحة:\n{numbered_context}"
+            system_prompt = (
+                LEGAL_PERSONA_PROMPT
+                + "\n\nتعليمات إلزامية: يجب أن تعتمد إجابتك فقط على النص المقدم في CONTEXT أدناه. "
+                "لا تستخدم معرفتك العامة أو أي معلومات من خارج هذا CONTEXT."
+            )
 
-            # Build messages array: up to 6 previous turns + current question
+            # Embed the retrieved document chunks directly in the user message
+            # so Claude reads and cites them rather than falling back on training data.
+            user_message = (
+                f"CONTEXT من الوثائق المرفوعة:\n{numbered_context}\n\n"
+                f"سؤال المستخدم:\n{search_question}\n\n"
+                "تعليمات: أجب فقط بناءً على CONTEXT أعلاه.\n"
+                "إذا لم يحتوِ CONTEXT على المعلومة، قل:\n"
+                "'عذراً، لم أجد معلومات كافية في الوثائق المتاحة.'"
+            )
+
+            # Build messages array: up to 6 previous turns + current question with context
             _hist_turns: List[Dict[str, Any]] = []
             for _turn in (conversation_history or [])[-6:]:
                 _role = _turn.get("role", "")
                 _content = str(_turn.get("content", "")).strip()
                 if _role in ("user", "assistant") and _content:
                     _hist_turns.append({"role": _role, "content": _content})
-            _hist_turns.append({"role": "user", "content": search_question})
+            _hist_turns.append({"role": "user", "content": user_message})
 
             # ── Stream response, buffering to strip SOURCES_USED: from output ──
             # Use just "SOURCES_USED:" (no leading newline) for robust matching
