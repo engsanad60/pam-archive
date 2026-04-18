@@ -65,6 +65,20 @@ def _set_cached(question: str, value: Dict[str, Any]) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: re-index any documents missing from ChromaDB, then pre-warm Claude."""
+    # Reset ChromaDB if RESET_DB env var is set to "true"
+    if os.environ.get("RESET_DB") == "true":
+        try:
+            import chromadb as _chromadb
+            _storage = Path(os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "."))
+            _client = _chromadb.PersistentClient(path=str(_storage / "data" / "chromadb"))
+            _collections = _client.list_collections()
+            for _c in _collections:
+                _client.delete_collection(_c.name)
+                print(f"Deleted collection: {_c.name}", flush=True)
+            print("ChromaDB reset complete!", flush=True)
+        except Exception as _e:
+            print(f"Reset error: {_e}", flush=True)
+
     loop = asyncio.get_event_loop()
     try:
         count = await loop.run_in_executor(None, archive_manager.reindex_missing_documents)
